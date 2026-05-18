@@ -1,0 +1,12 @@
+{
+  "deck_details": {
+    "deck_name": "Animais do Zoo",
+    "deck_description": "An enhanced deck with 28 cards + 8 power-ups and unique identifiers (A-Z, *, #) with a strategic star system.",
+    "version": 1,
+    "baseUrl": "https://www.massivescan.com/qrc/",
+    "utilityBaseUrl": "https://www.massivescan.com/util/",
+    "deck_id": "0001",
+    "errorCorrectionLevel": "Q"
+  },
+  "qrcodes": []
+}

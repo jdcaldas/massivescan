@@ -1,0 +1,30 @@
+[
+  {
+    "id": "mpbiz8jaiudpa",
+    "name": "REIS DE PORTUGAL",
+    "createdAt": "2026-05-18T18:16:13.557Z",
+    "updatedAt": "2026-05-18T18:16:13.557Z",
+    "status": "active"
+  },
+  {
+    "id": "mpbigfg149u91",
+    "name": "MAC DONALdS",
+    "createdAt": "2026-05-18T18:01:36.049Z",
+    "updatedAt": "2026-05-18T18:15:51.832Z",
+    "status": "active"
+  },
+  {
+    "id": "mpbibjzk2sion",
+    "name": "ZOO DE LISBOA",
+    "createdAt": "2026-05-18T17:57:48.656Z",
+    "updatedAt": "2026-05-18T17:57:48.656Z",
+    "status": "active"
+  },
+  {
+    "id": "mpbib09uajkvu",
+    "name": "LONDON ZOO",
+    "createdAt": "2026-05-18T17:57:23.106Z",
+    "updatedAt": "2026-05-18T17:57:23.106Z",
+    "status": "active"
+  }
+]

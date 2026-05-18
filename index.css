@@ -1,0 +1,78 @@
+/* ── Cards module: brutalist primitives ────────────────────────────────── */
+
+.label-brutal {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #6A6A6A;
+  margin-bottom: 5px;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.input-brutal {
+  display: block;
+  width: 100%;
+  border: 2px solid #1A1A1A;
+  border-radius: 0;
+  padding: 7px 11px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: #FFFFFF;
+  color: #1A1A1A;
+  outline: none;
+  box-sizing: border-box;
+  transition: box-shadow 80ms ease;
+}
+.input-brutal:focus {
+  box-shadow: 3px 3px 0 #1A1A1A;
+}
+
+.card-brutal {
+  background: #FFFFFF;
+  border: 2px solid #1A1A1A;
+  box-shadow: 5px 5px 0 #1A1A1A;
+  border-radius: 0;
+}
+
+.btn-brutal {
+  border: 2px solid #1A1A1A;
+  box-shadow: 4px 4px 0 #1A1A1A;
+  border-radius: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.btn-brutal:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #1A1A1A;
+}
+.btn-brutal:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #1A1A1A;
+}
+.btn-brutal:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-brutal-sm {
+  border: 2px solid #1A1A1A;
+  box-shadow: 2px 2px 0 #1A1A1A;
+  border-radius: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.btn-brutal-sm:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #1A1A1A;
+}
+.btn-brutal-sm:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #1A1A1A;
+}

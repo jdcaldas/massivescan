@@ -1,0 +1,397 @@
+{
+  "deck_details": {
+    "deck_name": "ESSENTIAL PLUS DECK",
+    "deck_description": "An enhanced 36-card deck (28 cards + 8 power-ups) with unique identifiers (A-Z, *, #) and a strategic star system.",
+    "version": 1,
+    "baseUrl": "https://www.massivescan.com/qrc/",
+    "utilityBaseUrl": "https://www.massivescan.com/util/",
+    "deck_id": "0002",
+    "errorCorrectionLevel": "Q"
+  },
+  "qrcodes": [
+    {
+      "id": "game_card-001",
+      "pathId": "xxng4r",
+      "key": "2k0tpn1le6",
+      "type": "game_card",
+      "number": 1,
+      "color": "yellow",
+      "letter": "A",
+      "stars": 3
+    },
+    {
+      "id": "game_card-002",
+      "pathId": "mlveso",
+      "key": "hddvs39y4x",
+      "type": "game_card",
+      "number": 2,
+      "color": "green",
+      "letter": "B",
+      "stars": 3
+    },
+    {
+      "id": "game_card-003",
+      "pathId": "0r0x4h",
+      "key": "5tcqfwlxy6",
+      "type": "game_card",
+      "number": 3,
+      "color": "blue",
+      "letter": "C",
+      "stars": 3
+    },
+    {
+      "id": "game_card-004",
+      "pathId": "t16t6l",
+      "key": "mwsiosrddc",
+      "type": "game_card",
+      "number": 4,
+      "color": "magenta",
+      "letter": "D",
+      "stars": 3
+    },
+    {
+      "id": "game_card-005",
+      "pathId": "ctxpq7",
+      "key": "i4f01ze2dw",
+      "type": "game_card",
+      "number": 5,
+      "color": "yellow",
+      "letter": "E",
+      "stars": 2
+    },
+    {
+      "id": "game_card-006",
+      "pathId": "y0sraf",
+      "key": "m3nkwjqunv",
+      "type": "game_card",
+      "number": 6,
+      "color": "green",
+      "letter": "F",
+      "stars": 2
+    },
+    {
+      "id": "game_card-007",
+      "pathId": "4cyjaq",
+      "key": "slkq3g4tku",
+      "type": "game_card",
+      "number": 7,
+      "color": "blue",
+      "letter": "G",
+      "stars": 2
+    },
+    {
+      "id": "game_card-008",
+      "pathId": "34f13z",
+      "key": "hl0lapsiic",
+      "type": "game_card",
+      "number": 8,
+      "color": "magenta",
+      "letter": "H",
+      "stars": 2
+    },
+    {
+      "id": "game_card-009",
+      "pathId": "j7ed73",
+      "key": "dajsnumexb",
+      "type": "game_card",
+      "number": 9,
+      "color": "yellow",
+      "letter": "I",
+      "stars": 1
+    },
+    {
+      "id": "game_card-010",
+      "pathId": "pkm6h2",
+      "key": "z54m8bjp21",
+      "type": "game_card",
+      "number": 10,
+      "color": "green",
+      "letter": "J",
+      "stars": 1
+    },
+    {
+      "id": "game_card-011",
+      "pathId": "6x5igr",
+      "key": "k01rsqceek",
+      "type": "game_card",
+      "number": 11,
+      "color": "blue",
+      "letter": "K",
+      "stars": 1
+    },
+    {
+      "id": "game_card-012",
+      "pathId": "6c3q48",
+      "key": "o5wgri3xcv",
+      "type": "game_card",
+      "number": 12,
+      "color": "magenta",
+      "letter": "L",
+      "stars": 1
+    },
+    {
+      "id": "game_card-013",
+      "pathId": "26udg0",
+      "key": "rpw3esjgsx",
+      "type": "game_card",
+      "number": 13,
+      "color": "yellow",
+      "letter": "M",
+      "stars": 1
+    },
+    {
+      "id": "game_card-014",
+      "pathId": "7os31k",
+      "key": "k7pbjcuju6",
+      "type": "game_card",
+      "number": 14,
+      "color": "green",
+      "letter": "N",
+      "stars": 1
+    },
+    {
+      "id": "game_card-015",
+      "pathId": "pwc6a4",
+      "key": "w5jotfmh3f",
+      "type": "game_card",
+      "number": 15,
+      "color": "blue",
+      "letter": "O",
+      "stars": 1
+    },
+    {
+      "id": "game_card-016",
+      "pathId": "6gpx4u",
+      "key": "94c3606v3b",
+      "type": "game_card",
+      "number": 16,
+      "color": "magenta",
+      "letter": "P",
+      "stars": 1
+    },
+    {
+      "id": "game_card-017",
+      "pathId": "d943ez",
+      "key": "zgmjz8xe7v",
+      "type": "game_card",
+      "number": 17,
+      "color": "yellow",
+      "letter": "Q",
+      "stars": 1
+    },
+    {
+      "id": "game_card-018",
+      "pathId": "gpxqrt",
+      "key": "hpmzxqbgml",
+      "type": "game_card",
+      "number": 18,
+      "color": "green",
+      "letter": "R",
+      "stars": 1
+    },
+    {
+      "id": "game_card-019",
+      "pathId": "54b3qy",
+      "key": "jyt1x0srbs",
+      "type": "game_card",
+      "number": 19,
+      "color": "blue",
+      "letter": "S",
+      "stars": 1
+    },
+    {
+      "id": "game_card-020",
+      "pathId": "77ggvh",
+      "key": "vmoy28jl4i",
+      "type": "game_card",
+      "number": 20,
+      "color": "magenta",
+      "letter": "T",
+      "stars": 1
+    },
+    {
+      "id": "game_card-021",
+      "pathId": "nnu5zp",
+      "key": "y2i7honrf3",
+      "type": "game_card",
+      "number": 21,
+      "color": "yellow",
+      "letter": "U",
+      "stars": 1
+    },
+    {
+      "id": "game_card-022",
+      "pathId": "pwhy24",
+      "key": "o44u6jnhf2",
+      "type": "game_card",
+      "number": 22,
+      "color": "green",
+      "letter": "V",
+      "stars": 1
+    },
+    {
+      "id": "game_card-023",
+      "pathId": "93c9nr",
+      "key": "g5tmuz3eez",
+      "type": "game_card",
+      "number": 23,
+      "color": "blue",
+      "letter": "W",
+      "stars": 1
+    },
+    {
+      "id": "game_card-024",
+      "pathId": "n7qbla",
+      "key": "jrq5vms68y",
+      "type": "game_card",
+      "number": 24,
+      "color": "magenta",
+      "letter": "X",
+      "stars": 1
+    },
+    {
+      "id": "game_card-025",
+      "pathId": "22jxef",
+      "key": "rd3esabnq8",
+      "type": "game_card",
+      "number": 25,
+      "color": "yellow",
+      "letter": "Y",
+      "stars": 1
+    },
+    {
+      "id": "game_card-026",
+      "pathId": "zmz8gt",
+      "key": "hjoh72izvb",
+      "type": "game_card",
+      "number": 26,
+      "color": "green",
+      "letter": "Z",
+      "stars": 1
+    },
+    {
+      "id": "game_card-027",
+      "pathId": "zzuy35",
+      "key": "2ajhfccqdk",
+      "type": "game_card",
+      "number": 27,
+      "color": "blue",
+      "letter": "*",
+      "stars": 1
+    },
+    {
+      "id": "game_card-028",
+      "pathId": "loj4px",
+      "key": "t0k6a80mcn",
+      "type": "game_card",
+      "number": 28,
+      "color": "magenta",
+      "letter": "#",
+      "stars": 1
+    },
+    {
+      "id": "power_up-001",
+      "pathId": "e4a5xn",
+      "key": "bfgnat8dyf",
+      "type": "power_up",
+      "card_color": "black",
+      "stars": 0
+    },
+    {
+      "id": "power_up-002",
+      "pathId": "iotfh3",
+      "key": "23yiwds6gs",
+      "type": "power_up",
+      "card_color": "black",
+      "stars": 0
+    },
+    {
+      "id": "power_up-003",
+      "pathId": "tiuyjx",
+      "key": "3qfrd82ycf",
+      "type": "power_up",
+      "card_color": "black",
+      "stars": 0
+    },
+    {
+      "id": "power_up-004",
+      "pathId": "gtwbfw",
+      "key": "qimlajwwjw",
+      "type": "power_up",
+      "card_color": "black",
+      "stars": 0
+    },
+    {
+      "id": "power_up-005",
+      "pathId": "o0mdb6",
+      "key": "mb4bhho711",
+      "type": "power_up",
+      "card_color": "white",
+      "stars": 0
+    },
+    {
+      "id": "power_up-006",
+      "pathId": "q2idj1",
+      "key": "3hqnhojlmr",
+      "type": "power_up",
+      "card_color": "white",
+      "stars": 0
+    },
+    {
+      "id": "power_up-007",
+      "pathId": "ufan9f",
+      "key": "1tyeqebxul",
+      "type": "power_up",
+      "card_color": "white",
+      "stars": 0
+    },
+    {
+      "id": "power_up-008",
+      "pathId": "s7l1fs",
+      "key": "2zfqsruoif",
+      "type": "power_up",
+      "card_color": "white",
+      "stars": 0
+    },
+    {
+      "id": "promo_video-001",
+      "pathId": "djt00l",
+      "key": "9kc77alqjn",
+      "type": "promo_video",
+      "card_color": "light grey",
+      "stars": 0
+    },
+    {
+      "id": "sponsor-001",
+      "pathId": "u150by",
+      "key": "ltd5wzbzvs",
+      "type": "sponsor",
+      "card_color": "light grey",
+      "stars": 0
+    },
+    {
+      "id": "sponsor-002",
+      "pathId": "l8yn3p",
+      "key": "4di8ze4zms",
+      "type": "sponsor",
+      "card_color": "light grey",
+      "stars": 0
+    },
+    {
+      "id": "instructions-001",
+      "pathId": "3fwqfb",
+      "key": "0vm6jllg43",
+      "type": "instructions",
+      "card_color": "light grey",
+      "stars": 0
+    },
+    {
+      "id": "game_activator-001",
+      "pathId": "0nywev",
+      "key": "44hp2ffcu1",
+      "type": "game_activator",
+      "card_color": "light grey",
+      "stars": 0
+    }
+  ]
+}
