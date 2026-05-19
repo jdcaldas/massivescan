@@ -9,9 +9,6 @@ interface TelemetryOverlayProps {
   logs: LogEntry[];
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  availableModels: { id: string; name: string }[];
-  selectedModel: string;
-  onSelectModel: (model: string) => void;
 }
 
 const TelemetryOverlay: React.FC<TelemetryOverlayProps> = ({
@@ -20,9 +17,6 @@ const TelemetryOverlay: React.FC<TelemetryOverlayProps> = ({
   logs,
   isOpen,
   setIsOpen,
-  availableModels,
-  selectedModel,
-  onSelectModel,
 }) => {
   const isIdle = activeModel === 'Idle';
 
@@ -62,18 +56,6 @@ const TelemetryOverlay: React.FC<TelemetryOverlayProps> = ({
       <div className="fixed bottom-0 left-0 right-0 h-10 bg-black border-t-2 border-[#6EE7B7] flex items-center justify-between px-5 z-50">
 
         <div className="flex items-center gap-5">
-          <select
-            value={selectedModel}
-            onChange={(e) => onSelectModel(e.target.value)}
-            disabled={!isIdle}
-            className="bg-transparent text-xs font-bold text-[#6EE7B7] outline-none cursor-pointer disabled:opacity-40 hover:text-white transition-colors"
-            title="AI Model"
-          >
-            {availableModels.map(m => (
-              <option key={m.id} value={m.id} className="bg-black text-white">{m.name}</option>
-            ))}
-          </select>
-
           <div className="flex items-center gap-1.5">
             <div className={`w-1.5 h-1.5 rounded-full transition-colors ${!isIdle ? 'bg-[#6EE7B7] animate-pulse' : 'bg-[#6EE7B7]/40'}`} />
             <span className="text-xs font-mono font-bold text-white">

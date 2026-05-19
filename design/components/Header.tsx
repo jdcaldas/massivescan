@@ -39,6 +39,9 @@ interface HeaderProps {
   isDarkMode: boolean;
   setIsDarkMode: (isDark: boolean) => void;
   defaultTranslateTo?: string;
+  selectedModel?: string;
+  onSelectModel?: (model: string) => void;
+  availableModels?: { id: string; name: string }[];
 }
 
 const LANGUAGES = [
@@ -79,6 +82,9 @@ const Header: React.FC<HeaderProps> = ({
   isDarkMode,
   setIsDarkMode,
   defaultTranslateTo,
+  selectedModel,
+  onSelectModel,
+  availableModels,
   onCancel,
   onTranslate,
   isTranslating,
@@ -306,7 +312,7 @@ const Header: React.FC<HeaderProps> = ({
 
             {/* Actions row */}
             {onGoToImages && canExport && (
-              <div className="mt-3 flex items-center">
+              <div className="mt-3 flex items-center justify-between gap-4">
                 <button
                   onClick={onGoToImages}
                   disabled={isGenerating}
@@ -316,6 +322,20 @@ const Header: React.FC<HeaderProps> = ({
                   <ImageIcon className="w-4 h-4" />
                   Advance for Design →
                 </button>
+
+                {availableModels && onSelectModel && selectedModel && (
+                  <select
+                    value={selectedModel}
+                    onChange={e => onSelectModel(e.target.value)}
+                    disabled={isGenerating}
+                    className="neo-input bg-brand-bg text-xs font-black text-brand-text outline-none cursor-pointer px-3 py-2.5 flex-shrink-0 disabled:opacity-40"
+                    title="AI Model"
+                  >
+                    {availableModels.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
 

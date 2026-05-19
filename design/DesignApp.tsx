@@ -21,6 +21,9 @@ import TelemetryOverlay from './components/TelemetryOverlay';
 import SettingsModal from './components/SettingsModal';
 import HomePage from './components/HomePage';
 import ImageStudio from './components/ImageStudio';
+import CardStudio from './components/CardStudio';
+import DeckFusion from './components/DeckFusion';
+import ModelTestPage from './components/ModelTestPage';
 
 const ARCHIVE_KEY = 'massivescan_archive';
 const SETTINGS_KEY = 'massivescan_settings';
@@ -68,17 +71,12 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
       return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS;
     } catch { return DEFAULT_SETTINGS; }
   });
-  const [savedDesigns, setSavedDesigns] = useState<WorldMeta[]>(() => {
-    try {
-      const stored = localStorage.getItem(ARCHIVE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
-  });
+  const [savedDesigns, setSavedDesigns] = useState<WorldMeta[]>([]);
   const [genProgress, setGenProgress] = useState<{ step: number; total: number; label: string } | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [loadingSubgroupKeys, setLoadingSubgroupKeys] = useState<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [currentView, setCurrentView] = useState<'home' | 'editor' | 'images'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'editor' | 'images' | 'cards' | 'fusion' | 'model-test'>('home');
   const [activeWorldName, setActiveWorldName] = useState<string | null>(null);
   const [activeWorldId, setActiveWorldId] = useState<string | null>(null);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -122,10 +120,7 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
       }
     });
     fileArchive.loadIndex(projectId).then((index) => {
-      if (index.length > 0) {
-        setSavedDesigns(index);
-        localStorage.setItem(ARCHIVE_KEY, JSON.stringify(index));
-      }
+      setSavedDesigns(index);
     });
   }, []);
 
@@ -214,7 +209,9 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
 
     try {
       setContentLanguage(language);
-      setGenProgress({ step: 1, total: 10, label: 'Analyzing theme…' });
+      // Fixed structure: 1 analyze + 1 build base + 6 group details = 8 steps
+      const genTotal = 8;
+      setGenProgress({ step: 1, total: genTotal, label: 'Analyzing theme…' });
       // Execute Theme Description with Telemetry
       const description = await executeWithTelemetry(
           `Generate Theme Description for: ${theme}`,
@@ -230,16 +227,16 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
       const result = await executeWithTelemetry(
           `Generate Full Structure for: ${theme}`,
           () => generateAll(
-              theme, 
-              description, 
+              theme,
+              description,
               language,
-              selectedModel, 
+              selectedModel,
               (partialStructure) => setDesignStructure(partialStructure),
               (usage) => {
                   handleUsage(selectedModel, usage);
                   setApiStats(prev => ({ ...prev, generateAll: prev.generateAll + 1 }));
               },
-              (step, label) => setGenProgress({ step: step + 1, total: 10, label }),
+              (step, label) => setGenProgress({ step: step + 1, total: genTotal, label }),
               controller.signal
           )
       );
@@ -340,7 +337,7 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
           () => apiRegenerateSubgroups(theme, themeDescription, parentGroup.title, existingSubgroupTitles, language, selectedModel, (usage) => {
               handleUsage(selectedModel, usage);
               setApiStats(prev => ({ ...prev, regenerateSubgroups: prev.regenerateSubgroups + 1 }));
-          })
+          }, parentGroup.subgroups.length)
       );
 
       setDesignStructure(prev => {
@@ -522,6 +519,14 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
     setCurrentView('images');
   }, []);
 
+  const handleGoToCards = useCallback(() => {
+    setCurrentView('cards');
+  }, []);
+
+  const handleGoToFusion = useCallback(() => {
+    setCurrentView('fusion');
+  }, []);
+
   const handleSaveImages = useCallback((updatedStructure: DesignStructure) => {
     setDesignStructure(updatedStructure);
     if (!activeWorldId) return;
@@ -640,6 +645,7 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenHelp={() => setIsHelpOpen(true)}
           onOpenUsage={() => setIsUsageOpen(true)}
+          onOpenModelTest={() => setCurrentView('model-test')}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
           onBackToLauncher={onBackToLauncher}
@@ -677,6 +683,69 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
           theme={theme}
           defaultImageModel={settings.defaultImageModel}
           onBack={() => setCurrentView('editor')}
+          onGoToCards={handleGoToCards}
+          onSave={handleSaveImages}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          projectName={projectName}
+        />
+        {isSettingsOpen && (
+          <SettingsModal
+            settings={settings}
+            onChange={handleSettingsChange}
+            onClose={() => setIsSettingsOpen(false)}
+            availableModels={AVAILABLE_MODELS}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (currentView === 'cards' && designStructure) {
+    return (
+      <>
+        <CardStudio
+          designStructure={designStructure}
+          theme={theme}
+          defaultImageModel={settings.defaultImageModel}
+          onBack={() => setCurrentView('images')}
+          onGoToFusion={handleGoToFusion}
+          onSave={handleSaveImages}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          projectName={projectName}
+        />
+        {isSettingsOpen && (
+          <SettingsModal
+            settings={settings}
+            onChange={handleSettingsChange}
+            onClose={() => setIsSettingsOpen(false)}
+            availableModels={AVAILABLE_MODELS}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (currentView === 'model-test') {
+    return (
+      <ModelTestPage
+        onBack={() => setCurrentView('home')}
+        projectName={projectName}
+      />
+    );
+  }
+
+  if (currentView === 'fusion' && designStructure) {
+    return (
+      <>
+        <DeckFusion
+          designStructure={designStructure}
+          theme={theme}
+          projectId={projectId}
+          onBack={() => setCurrentView('cards')}
           onSave={handleSaveImages}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
@@ -732,6 +801,9 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
         defaultTranslateTo={settings.defaultTranslateTo}
         onRegenerateAllSubgroups={handleRegenerateAllSubgroups}
         onOpenUsage={() => setIsUsageOpen(true)}
+        selectedModel={selectedModel}
+        onSelectModel={setSelectedModel}
+        availableModels={AVAILABLE_MODELS}
       />
        <input
         type="file"
@@ -782,9 +854,6 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
         logs={logs}
         isOpen={isTelemetryOpen}
         setIsOpen={setIsTelemetryOpen}
-        availableModels={AVAILABLE_MODELS}
-        selectedModel={selectedModel}
-        onSelectModel={setSelectedModel}
       />
 
       {isHelpOpen && (

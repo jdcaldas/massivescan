@@ -6,6 +6,7 @@ import { generateRandomKey } from './utils';
 import Section from './components/Section';
 import DeckDetailsForm from './components/DeckDetailsForm';
 import QRCodesManager from './components/QRCodesManager';
+import { DECK_TYPE_META, TIER_META, GROUP_META, FALLBACK_TYPE_META } from './deckTypeMeta';
 
 
 const INITIAL_DECK_CONFIG: DeckConfig = {
@@ -376,18 +377,8 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
   });
   const summaryUtilityCounts: Record<string, number> = {};
   utilityQRCodes.forEach(qr => { summaryUtilityCounts[qr.type] = (summaryUtilityCounts[qr.type] ?? 0) + 1; });
-  const colorMeta: Record<string, { bg: string; text: string }> = {
-    yellow:  { bg: '#FFE500', text: '#1A1A1A' },
-    green:   { bg: '#00D4AA', text: '#1A1A1A' },
-    blue:    { bg: '#4361EE', text: '#FFFFFF' },
-    magenta: { bg: '#FF4F6D', text: '#FFFFFF' },
-  };
-  const utilityMeta: Record<string, { bg: string; label: string }> = {
-    promo_video:    { bg: '#00D4AA', label: 'Promo Video' },
-    sponsor:        { bg: '#FF4F6D', label: 'Sponsor' },
-    instructions:   { bg: '#B8D8F8', label: 'Instructions' },
-    game_activator: { bg: '#FF4F6D', label: 'Game Activator' },
-  };
+  // Unified deck type/tier visuals — see cards/deckTypeMeta.ts
+  const colorMeta = TIER_META;
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
@@ -496,12 +487,12 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
               <div style={{ background: '#FF4F6D', border: '2px solid #1A1A1A', boxShadow: '5px 5px 0 #1A1A1A', padding: '1rem 1.25rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <span style={{ background: '#1A1A1A', color: '#FF4F6D', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '2px 7px' }}>★ Recommended</span>
+                    <span style={{ background: '#1A1A1A', color: '#FFFFFF', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '2px 7px' }}>★ Recommended</span>
                   </div>
-                  <div style={{ fontWeight: 900, fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#1A1A1A' }}>Essential Plus Deck</div>
-                  <div style={{ fontSize: '0.78rem', color: '#3A3A3A', fontWeight: 600, marginTop: '2px' }}>28 cards + 8 power-ups + utility QR codes</div>
+                  <div style={{ fontWeight: 900, fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#FFFFFF' }}>Essential Plus Deck</div>
+                  <div style={{ fontSize: '0.78rem', color: '#FFFFFF', fontWeight: 600, marginTop: '2px' }}>28 cards (4×7) + 8 power-ups + utility QR codes</div>
                 </div>
-                <button className="btn-brutal" style={{ padding: '12px 24px', background: '#1A1A1A', color: '#FF4F6D', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }} onClick={generateEssentialPlusDeck}>
+                <button className="btn-brutal" style={{ padding: '12px 24px', background: '#1A1A1A', color: '#FFFFFF', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }} onClick={generateEssentialPlusDeck}>
                   Generate →
                 </button>
               </div>
@@ -636,10 +627,10 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
                 {/* Totals row */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {[
-                    { label: 'Game Cards', val: cardQRCodes.length,    bg: '#2E2E2E', fg: '#FFFFFF' },
-                    { label: 'Power-Ups',  val: powerUpQRCodes.length, bg: '#C8B6FF', fg: '#1A1A1A' },
-                    { label: 'Utility',    val: utilityQRCodes.length, bg: '#00D4AA', fg: '#1A1A1A' },
-                    { label: 'Total QR',   val: totalCards,            bg: '#FFE500', fg: '#1A1A1A' },
+                    { label: GROUP_META.cards.label,    val: cardQRCodes.length,    bg: GROUP_META.cards.bg,    fg: GROUP_META.cards.fg    },
+                    { label: GROUP_META.powerups.label, val: powerUpQRCodes.length, bg: GROUP_META.powerups.bg, fg: GROUP_META.powerups.fg },
+                    { label: GROUP_META.utility.label,  val: utilityQRCodes.length, bg: GROUP_META.utility.bg,  fg: GROUP_META.utility.fg  },
+                    { label: GROUP_META.total.label,    val: totalCards,            bg: GROUP_META.total.bg,    fg: GROUP_META.total.fg    },
                   ].map(({ label, val, bg, fg }) => (
                     <div key={label} style={{ background: bg, border: '2px solid #1A1A1A', padding: '6px 14px', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                       <span style={{ fontWeight: 900, fontSize: '1.5rem', color: fg, lineHeight: 1 }}>{val}</span>
@@ -659,8 +650,8 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
                         const m = colorMeta[c];
                         return (
                           <div key={c} style={{ background: m.bg, border: '2px solid #1A1A1A', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontWeight: 900, fontSize: '1rem', color: m.text, lineHeight: 1 }}>{count}</span>
-                            <span style={{ fontWeight: 800, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: m.text }}>{c}</span>
+                            <span style={{ fontWeight: 900, fontSize: '1rem', color: m.fg, lineHeight: 1 }}>{count}</span>
+                            <span style={{ fontWeight: 800, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: m.fg }}>{c}</span>
                           </div>
                         );
                       })}
@@ -693,11 +684,11 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
                     <span style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9A9A9A', display: 'block', marginBottom: '6px' }}>Utility QR Codes</span>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {Object.entries(summaryUtilityCounts).map(([type, count]) => {
-                        const m = utilityMeta[type] ?? { bg: '#F0EDE6', label: type.replace(/_/g, ' ') };
+                        const m = DECK_TYPE_META[type] ?? FALLBACK_TYPE_META;
                         return (
                           <div key={type} style={{ background: m.bg, border: '2px solid #1A1A1A', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontWeight: 900, fontSize: '1rem', color: '#1A1A1A', lineHeight: 1 }}>{count}</span>
-                            <span style={{ fontWeight: 800, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: '#1A1A1A' }}>{m.label}</span>
+                            <span style={{ fontWeight: 900, fontSize: '1rem', color: m.fg, lineHeight: 1 }}>{count}</span>
+                            <span style={{ fontWeight: 800, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: m.fg }}>{m.label}</span>
                           </div>
                         );
                       })}
@@ -709,15 +700,15 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
             )}
           </Section>
 
-          <Section title="QR Codes — Cards" description="Physical QR codes linked to digital game cards. Auto-numbered and decorated." accent="#4361EE" isCollapsible isOpen={openSections.qrCodesCards} onToggle={() => toggleSection('qrCodesCards')}>
+          <Section title={`QR Codes — Game Cards [${cardQRCodes.length}]`} description="Physical QR codes linked to digital game cards. Auto-numbered and decorated." accent="#4361EE" isCollapsible isOpen={openSections.qrCodesCards} onToggle={() => toggleSection('qrCodesCards')}>
             <QRCodesManager qrcodes={cardQRCodes} onQRCodesChange={handleCardQRCodesChange} onAdd={() => addQRCode('game_card')} baseUrl={baseUrl} deckId={deckId} errorCorrectionLevel={errorCorrectionLevel} />
           </Section>
 
-          <Section title="QR Codes — Power-Ups" description="QR codes that trigger special power-up actions in-game." accent="#C8B6FF" isCollapsible isOpen={openSections.qrCodesPowerUps} onToggle={() => toggleSection('qrCodesPowerUps')}>
+          <Section title={`QR Codes — Power-Ups [${powerUpQRCodes.length}]`} description="QR codes that trigger special power-up actions in-game." accent="#C8B6FF" isCollapsible isOpen={openSections.qrCodesPowerUps} onToggle={() => toggleSection('qrCodesPowerUps')}>
             <QRCodesManager qrcodes={powerUpQRCodes} onQRCodesChange={handlePowerUpQRCodesChange} onAdd={() => addQRCode('power_up')} baseUrl={baseUrl} deckId={deckId} errorCorrectionLevel={errorCorrectionLevel} />
           </Section>
 
-          <Section title="QR Codes — Utility" description="QR codes for promos, instructions, sponsors, and game activation." accent="#00D4AA" isCollapsible isOpen={openSections.qrCodesUtility} onToggle={() => toggleSection('qrCodesUtility')}>
+          <Section title={`QR Codes — Utility [${utilityQRCodes.length}]`} description="QR codes for promos, instructions, sponsors, and game activation." accent="#00D4AA" isCollapsible isOpen={openSections.qrCodesUtility} onToggle={() => toggleSection('qrCodesUtility')}>
             <QRCodesManager qrcodes={utilityQRCodes} onQRCodesChange={handleUtilityQRCodesChange} onAdd={() => addQRCode('promo_video')} baseUrl={utilityBaseUrl} deckId={deckId} errorCorrectionLevel={errorCorrectionLevel} />
           </Section>
 

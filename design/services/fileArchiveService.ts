@@ -43,6 +43,38 @@ export async function patchWorldMeta(projectId: string, id: string, patch: Parti
   }).catch(() => {});
 }
 
+// ── Deck configs (project-scoped, stored in cards/saved/) ───────────────────
+
+export interface DeckFileMeta {
+  name: string;
+  modified: string;
+  deckName: string;
+}
+
+export async function listDecks(projectId: string): Promise<DeckFileMeta[]> {
+  try {
+    const res = await fetch(`/api/projects/${projectId}/cards/list`);
+    if (!res.ok) return [];
+    return (await res.json()).files ?? [];
+  } catch { return []; }
+}
+
+export async function loadDeck(projectId: string, filename: string): Promise<unknown | null> {
+  try {
+    const res = await fetch(`/api/projects/${projectId}/cards/load?file=${encodeURIComponent(filename)}`);
+    if (!res.ok) return null;
+    return (await res.json()).data ?? null;
+  } catch { return null; }
+}
+
+export async function saveDeck(projectId: string, filename: string, data: unknown): Promise<void> {
+  await fetch(`/api/projects/${projectId}/cards/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename, data }),
+  }).catch(() => {});
+}
+
 // ── Settings (global, not project-scoped) ───────────────────────────────────
 
 export async function loadSettings(): Promise<Record<string, unknown> | null> {

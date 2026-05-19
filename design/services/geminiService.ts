@@ -1,6 +1,46 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import type { Group, Subgroup, DesignStructure, ImageScenario, TokenUsage } from '../types';
 
+// ── Fixed design-phase structure ─────────────────────────────────────────────
+// The card deck always has this exact shape:
+//   • 4 color tiers × 7 game cards each = 28 game cards (interleaved 1-2-3-4-1-2-3-4…)
+//   • 1 Power-ups group × 8 cards
+//   • 1 Utility group × ~4 cards (instructions, sponsor, etc.)
+// Each group's cover image is reused on every card-back in its tier.
+// Each group's subgroups[i] image is the front of one specific card.
+export const DESIGN_PHASE_GROUPS = [
+    {
+        groupType: 'Grupo A', color: 'Yellow', subgroupCount: 7,
+        label: 'Tier 1 (Yellow) — 7 game cards (1 legendary + 1 rare + 5 commons)',
+        subgroupNature: 'Cada subgrupo é UM elemento temático específico (personagem, lugar, facção, conceito) desta tier. HIERARQUIA DE RARIDADE OBRIGATÓRIA: subgrupo 1 = elemento MAIS ICÓNICO/LENDÁRIO (carta 3★ rara), subgrupo 2 = elemento IMPORTANTE/SECUNDÁRIO (carta 2★), subgrupos 3-7 = elementos COMUNS/REGULARES (cartas 1★). A ordem narrativa deve descer do mais épico ao mais quotidiano.',
+    },
+    {
+        groupType: 'Grupo B', color: 'Green', subgroupCount: 7,
+        label: 'Tier 2 (Green) — 7 game cards (1 legendary + 1 rare + 5 commons)',
+        subgroupNature: 'Cada subgrupo é UM elemento temático específico (personagem, lugar, facção, conceito) desta tier. HIERARQUIA DE RARIDADE OBRIGATÓRIA: subgrupo 1 = elemento MAIS ICÓNICO/LENDÁRIO (carta 3★ rara), subgrupo 2 = elemento IMPORTANTE/SECUNDÁRIO (carta 2★), subgrupos 3-7 = elementos COMUNS/REGULARES (cartas 1★). A ordem narrativa deve descer do mais épico ao mais quotidiano.',
+    },
+    {
+        groupType: 'Grupo C', color: 'Blue', subgroupCount: 7,
+        label: 'Tier 3 (Blue) — 7 game cards (1 legendary + 1 rare + 5 commons)',
+        subgroupNature: 'Cada subgrupo é UM elemento temático específico (personagem, lugar, facção, conceito) desta tier. HIERARQUIA DE RARIDADE OBRIGATÓRIA: subgrupo 1 = elemento MAIS ICÓNICO/LENDÁRIO (carta 3★ rara), subgrupo 2 = elemento IMPORTANTE/SECUNDÁRIO (carta 2★), subgrupos 3-7 = elementos COMUNS/REGULARES (cartas 1★). A ordem narrativa deve descer do mais épico ao mais quotidiano.',
+    },
+    {
+        groupType: 'Grupo D', color: 'Magenta', subgroupCount: 7,
+        label: 'Tier 4 (Magenta) — 7 game cards (1 legendary + 1 rare + 5 commons)',
+        subgroupNature: 'Cada subgrupo é UM elemento temático específico (personagem, lugar, facção, conceito) desta tier. HIERARQUIA DE RARIDADE OBRIGATÓRIA: subgrupo 1 = elemento MAIS ICÓNICO/LENDÁRIO (carta 3★ rara), subgrupo 2 = elemento IMPORTANTE/SECUNDÁRIO (carta 2★), subgrupos 3-7 = elementos COMUNS/REGULARES (cartas 1★). A ordem narrativa deve descer do mais épico ao mais quotidiano.',
+    },
+    {
+        groupType: 'Grupo Power-ups', color: 'Special', subgroupCount: 8,
+        label: 'Power-ups — 8 action/event cards (4 positive + 4 negative)',
+        subgroupNature: 'Estes 8 subgrupos NÃO são personagens nem locais — são AÇÕES/EVENTOS de jogo que afetam a jogabilidade quando uma carta é jogada. Divida EXATAMENTE em: 4 ações POSITIVAS (vantagens, bónus, eventos sortudos — ex: "O Herói Retorna", "Aliança Inesperada", "Tesouro Descoberto") e 4 ações NEGATIVAS (contratempos, armadilhas, desgraças — ex: "A Traição do General", "A Praga Espalha", "Tempestade Devastadora"). O título deve ser dramático e impactante. A descrição deve explicar o efeito da ação no jogo. O mood deve refletir a energia da ação (triunfante para positivas, sombrio para negativas).',
+    },
+    {
+        groupType: 'Grupo Extra/Utilitários', color: 'Special', subgroupCount: 5,
+        label: 'Utility — 5 utility cards',
+        subgroupNature: 'Estes 5 subgrupos são CARTAS UTILITÁRIAS do jogo (não narrativas): 1) Instruções/Regras, 2) Patrocinador, 3) Vídeo Promocional, 4) Ativador de Jogo, 5) Outra carta utilitária. Mantenha o carácter funcional e prático.',
+    },
+] as const;
+
 if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable is not set.");
 }
@@ -144,6 +184,10 @@ export const generateAll = async (
     let totalIn = 0;
     let totalOut = 0;
 
+    // Fixed structure: 4 color tiers + Power-ups + Utility = 6 groups.
+    const groupCount = DESIGN_PHASE_GROUPS.length;
+    const deckGroupsHint = `\n\n      CARD DECK STRUCTURE — the deck has EXACTLY ${groupCount} groups in this order, do NOT change the order or count:\n${DESIGN_PHASE_GROUPS.map((g, i) => `      ${i + 1}. ${g.groupType} — ${g.label}`).join('\n')}\n\n      • Groups 1–4 (Yellow/Green/Blue/Magenta) are progressive thematic tiers — characters, places, factions, or concepts (e.g. chronological eras, difficulty levels, or categories that fit the theme). Each tier's COVER image is shared by all 7 cards in that tier; each subgroup represents ONE specific card. INSIDE EACH TIER, subgroups are ordered by RARITY: subgroup 1 is the legendary 3★ card (most iconic element), subgroup 2 is the rare 2★ card, subgroups 3–7 are the common 1★ cards.\n      • Group 5 (Power-ups) is NOT a thematic tier — it is 8 ACTION/EVENT cards that affect gameplay (4 positive boosts + 4 negative setbacks). The group title/description/mood should reflect "events that shake the world", not a faction or place.\n      • Group 6 (Utility) is 5 functional/utility cards (instructions, sponsor, promo video, game activator, other utility). The group title/description/mood should reflect "game meta / rules / services", not a narrative tier.\n      Generate creative thematic titles/descriptions/moods that match the user's theme, but the GROUP ORDER and IDENTITY (tier vs. action vs. utility) are fixed.`;
+
     const trackUsage = (response: any) => {
         const currentIn = response.usageMetadata?.promptTokenCount || 0;
         const currentOut = response.usageMetadata?.candidatesTokenCount || 0;
@@ -166,13 +210,14 @@ export const generateAll = async (
       A sua tarefa é criar a estrutura base:
       1.  "icon": Uma única palavra ou frase curta que representa visualmente o tema geral (ex: "Bomba Atómica", "Espada Antiga").
       2.  "visualStyle": Uma descrição concisa do estilo visual global do projeto.
-      3.  "groups": Uma lista de EXATAMENTE 6 grupos temáticos distintos e criativos baseados no tema.
-      
+      3.  "groups": Uma lista de EXATAMENTE ${groupCount} grupos temáticos distintos e criativos baseados no tema.
+
       Para cada grupo, forneça APENAS:
       1.  "title": Um título evocativo.
       2.  "description": Uma descrição de 1-2 frases sobre o conceito geral do grupo.
       3.  "mood": Uma breve descrição da direção de arte e atmosfera geral do grupo.
       4.  "icon": Uma única palavra ou frase curta que representa visualmente este grupo.
+      ${deckGroupsHint}
 
       IMPORTANTE: Todos os textos gerados (títulos, descrições, mood, icon, visualStyle) DEVEM ser escritos em ${language}.
       Não adicione comentários ou texto introdutório. Responda APENAS com o JSON.
@@ -190,7 +235,7 @@ export const generateAll = async (
     };
 
     checkCancelled();
-    onStep?.(1, 'Building world structure…');
+    onStep?.(1, 'Building concept structure…');
     const baseResponse = await ai.models.generateContent({
         model: model,
         contents: basePrompt,
@@ -203,7 +248,7 @@ export const generateAll = async (
                     visualStyle: { type: Type.STRING, description: "Uma descrição concisa do estilo visual global do projeto." },
                     groups: {
                         type: Type.ARRAY,
-                        description: "Uma lista de EXATAMENTE 6 grupos temáticos base.",
+                        description: `Uma lista de EXATAMENTE ${groupCount} grupos temáticos base.`,
                         items: baseGroupSchema
                     }
                 },
@@ -218,13 +263,14 @@ export const generateAll = async (
     let currentStructure: DesignStructure = {
         icon: baseResult.icon,
         visualStyle: baseResult.visualStyle || "",
-        groups: baseResult.groups.map((g: any) => ({
+        groups: baseResult.groups.map((g: any, idx: number) => ({
             ...g,
             id: crypto.randomUUID(),
             imagePrompts: [],
             subgroups: [],
             favoriteImagePromptIndex: null,
-            isLoading: true
+            isLoading: true,
+            groupType: DESIGN_PHASE_GROUPS[idx]?.groupType,
         }))
     };
 
@@ -234,13 +280,16 @@ export const generateAll = async (
     for (let i = 0; i < currentStructure.groups.length; i++) {
         await delay(1000);
         checkCancelled();
-        onStep?.(2 + i, `Detailing group ${i + 1} of 6…`);
+        onStep?.(2 + i, `Detailing group ${i + 1} of ${groupCount}…`);
         const group = currentStructure.groups[i];
+        const groupSpec = DESIGN_PHASE_GROUPS[i];
+        const subgroupCount = groupSpec.subgroupCount;
+        const deckSubgroupHint = `\n\n          CARD DECK CONSTRAINT: This is "${groupSpec.label}". Generate EXACTLY ${subgroupCount} subgroups — one unique creative design concept per individual card in this group.\n\n          NATUREZA DOS SUBGRUPOS: ${groupSpec.subgroupNature}`;
         const detailsPrompt = `
           Aja como um designer de jogos e world-builder sênior.
           O tema principal do mundo é "${theme}".
           Descrição do Tema: "${themeDescription || 'Nenhuma descrição fornecida.'}"
-          
+
           Estamos a detalhar o seguinte grupo:
           Título: "${group.title}"
           Descrição: "${group.description}"
@@ -248,7 +297,8 @@ export const generateAll = async (
 
           A sua tarefa é gerar os detalhes visuais e subgrupos para este grupo:
           1. "imagePrompts": Baseado no "mood" do grupo, crie uma lista de EXATAMENTE 2 cenários detalhados para geração de imagem. Devem ser apenas descrições visuais, sem texto ou legendas, cada um dentro de um objeto com a chave "prompt". ESTES PROMPTS DE IMAGEM DEVEM SER ESCRITOS EM INGLÊS.
-          2. "subgroups": Uma lista de EXATAMENTE 6 sub-elementos que pertencem a este grupo. Para cada sub-elemento, forneça "title", "description", "mood" e os seus próprios 2 "imagePrompts" detalhados baseados no seu mood específico, cada um dentro de um objeto com a chave "prompt". TODOS OS PROMPTS DE IMAGEM DEVEM SER ESCRITOS EM INGLÊS.
+          2. "subgroups": Uma lista de EXATAMENTE ${subgroupCount} sub-elementos que pertencem a este grupo. Para cada sub-elemento, forneça "title", "description", "mood" e os seus próprios 2 "imagePrompts" detalhados baseados no seu mood específico, cada um dentro de um objeto com a chave "prompt". TODOS OS PROMPTS DE IMAGEM DEVEM SER ESCRITOS EM INGLÊS.
+          ${deckSubgroupHint}
 
           IMPORTANTE: Todos os textos gerados (títulos, descrições, mood) DEVEM ser escritos em ${language}. No entanto, os "imagePrompts" DEVEM SEMPRE ser escritos em INGLÊS.
           Não adicione comentários ou texto introdutório. Responda APENAS com o JSON.
@@ -265,7 +315,7 @@ export const generateAll = async (
                         imagePrompts: imagePromptsSchema,
                         subgroups: {
                             type: Type.ARRAY,
-                            description: 'Uma lista de EXATAMENTE 6 subgrupos detalhados que pertencem a este grupo.',
+                            description: `Uma lista de EXATAMENTE ${subgroupCount} subgrupos detalhados que pertencem a este grupo.`,
                             items: subgroupSchema
                         }
                     },
@@ -289,113 +339,6 @@ export const generateAll = async (
         };
         if (onProgress) onProgress({ ...currentStructure });
     }
-
-    // 3. Generate the 7th special group (Actions) Base
-    await delay(1000);
-    checkCancelled();
-    onStep?.(8, 'Creating action events…');
-    const existingGroupTitles = currentStructure.groups.map(g => g.title);
-    const specialBasePrompt = `
-      Aja como um designer de jogos e world-builder sênior.
-      O tema principal do mundo é "${theme}".
-      Descrição do Tema: "${themeDescription || 'Nenhuma descrição fornecida.'}"
-      Os grupos temáticos principais já criados são: ${existingGroupTitles.join(', ')}.
-
-      A sua tarefa é criar a ESTRUTURA BASE de UM SÉTIMO grupo, que é um grupo especial de "Ações". Este grupo não é uma facção ou local, mas sim um conjunto de eventos ou ações cruciais que podem acontecer.
-      
-      Forneça APENAS:
-      1.  "title": Um título evocativo como "Pontos de Virada" ou "Eventos Decisivos".
-      2.  "description": Uma descrição sobre como estas ações impactam o mundo.
-      3.  "mood": O "mood" gráfico geral para representar estas ações.
-      4.  "icon": Um ícone que simbolize escolha ou consequência (ex: "Balança", "Impacto").
-
-      IMPORTANTE: Todos os textos gerados DEVEM ser escritos em ${language}.
-      Não adicione comentários ou texto introdutório. Responda APENAS com o JSON.
-    `;
-    
-    const specialBaseResponse = await ai.models.generateContent({
-        model: model,
-        contents: specialBasePrompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: baseGroupSchema
-        }
-    });
-
-    trackUsage(specialBaseResponse);
-    const specialBaseResult = JSON.parse(specialBaseResponse.text.trim());
-
-    const specialGroupId = crypto.randomUUID();
-    currentStructure.groups.push({
-        ...specialBaseResult,
-        id: specialGroupId,
-        imagePrompts: [],
-        subgroups: [],
-        favoriteImagePromptIndex: null,
-        isLoading: true
-    });
-    if (onProgress) onProgress({ ...currentStructure });
-
-    // 4. Generate Special Group Details
-    await delay(1000);
-    checkCancelled();
-    onStep?.(9, 'Finalizing event details…');
-    const specialDetailsPrompt = `
-      Aja como um designer de jogos e world-builder sênior.
-      O tema principal do mundo é "${theme}".
-      Descrição do Tema: "${themeDescription || 'Nenhuma descrição fornecida.'}"
-      
-      Estamos a detalhar o grupo especial de Ações:
-      Título: "${specialBaseResult.title}"
-      Descrição: "${specialBaseResult.description}"
-      Mood: "${specialBaseResult.mood}"
-
-      A sua tarefa é gerar os detalhes visuais e subgrupos (ações) para este grupo:
-      1. "imagePrompts": 2 cenários de imagem detalhados baseados no mood do grupo. ESTES PROMPTS DE IMAGEM DEVEM SER ESCRITOS EM INGLÊS.
-      2. "subgroups": Uma lista de EXATAMENTE 8 subgrupos. Cada subgrupo deve ser uma AÇÃO específica.
-          - 4 subgrupos devem ser ações POSITIVAS que aumentam a moral ou dão vantagens (ex: "O Herói Retorna", "Aliança Inesperada").
-          - 4 subgrupos devem ser ações NEGATIVAS que diminuem a moral ou trazem desvantagens (ex: "A Traição do General", "A Praga se Espalha").
-          - Para cada subgrupo (ação), forneça "title", "description", "mood" e os seus próprios 2 "imagePrompts" detalhados. TODOS OS PROMPTS DE IMAGEM DEVEM SER ESCRITOS EM INGLÊS.
-
-      IMPORTANTE: Todos os textos gerados (títulos, descrições, mood) DEVEM ser escritos em ${language}. No entanto, os "imagePrompts" DEVEM SEMPRE ser escritos em INGLÊS.
-      Não adicione comentários ou texto introdutório. Responda APENAS com o JSON.
-    `;
-
-    const specialDetailsResponse = await ai.models.generateContent({
-        model: model,
-        contents: specialDetailsPrompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    imagePrompts: imagePromptsSchema,
-                    subgroups: {
-                        type: Type.ARRAY,
-                        description: 'Uma lista de EXATAMENTE 8 subgrupos de ações (4 positivas, 4 negativas).',
-                        items: subgroupSchema
-                    }
-                },
-                required: ['imagePrompts', 'subgroups']
-            }
-        }
-    });
-
-    trackUsage(specialDetailsResponse);
-    const specialDetailsResult = JSON.parse(specialDetailsResponse.text.trim());
-
-    const specialGroupIndex = currentStructure.groups.findIndex(g => g.id === specialGroupId);
-    currentStructure.groups[specialGroupIndex] = {
-        ...currentStructure.groups[specialGroupIndex],
-        isLoading: false,
-        imagePrompts: processImagePrompts(specialDetailsResult.imagePrompts),
-        subgroups: specialDetailsResult.subgroups.map((sg: any) => ({
-            ...sg,
-            favoriteImagePromptIndex: null,
-            imagePrompts: processImagePrompts(sg.imagePrompts)
-        }))
-    };
-    if (onProgress) onProgress({ ...currentStructure });
 
     return currentStructure;
 };
@@ -452,7 +395,7 @@ export const regenerateGroup = async (theme: string, themeDescription: string, e
     };
 };
 
-export const regenerateSubgroups = async (theme: string, themeDescription: string, parentGroupName: string, existingSubgroupTitles: string[], language: string, model: string, onUsage?: (usage: TokenUsage) => void): Promise<Subgroup[]> => {
+export const regenerateSubgroups = async (theme: string, themeDescription: string, parentGroupName: string, existingSubgroupTitles: string[], language: string, model: string, onUsage?: (usage: TokenUsage) => void, subgroupCount: number = 6): Promise<Subgroup[]> => {
     const prompt = `
       Aja como um designer de jogos e world-builder sênior.
       O tema principal do mundo é "${theme}".
@@ -460,13 +403,13 @@ export const regenerateSubgroups = async (theme: string, themeDescription: strin
       Estamos a focar no grupo chamado "${parentGroupName}".
       Os subgrupos atuais são: ${existingSubgroupTitles.join(', ')}.
 
-      A sua tarefa é gerar uma nova lista de EXATAMENTE 6 subgrupos criativos e detalhados para o grupo "${parentGroupName}", considerando o tema geral e sua descrição.
+      A sua tarefa é gerar uma nova lista de EXATAMENTE ${subgroupCount} subgrupos criativos e detalhados para o grupo "${parentGroupName}", considerando o tema geral e sua descrição.
       Os novos subgrupos devem ser distintos dos existentes.
 
       Para cada novo subgrupo, forneça "title", "description", "mood", e "imagePrompts". Os "imagePrompts" devem ser uma lista de 2 cenários detalhados para geração de imagem, baseados no mood do subgrupo, cada um dentro de um objeto com a chave "prompt". TODOS OS PROMPTS DE IMAGEM DEVEM SER ESCRITOS EM INGLÊS.
 
       IMPORTANTE: Todos os textos gerados (títulos, descrições, mood) DEVEM ser escritos em ${language}. No entanto, os "imagePrompts" DEVEM SEMPRE ser escritos em INGLÊS.
-      Responda APENAS com um objeto JSON contendo a chave "subgroups", que é um array com os 6 novos objetos de subgrupo.
+      Responda APENAS com um objeto JSON contendo a chave "subgroups", que é um array com os ${subgroupCount} novos objetos de subgrupo.
     `;
     
     const response = await ai.models.generateContent({
@@ -479,7 +422,7 @@ export const regenerateSubgroups = async (theme: string, themeDescription: strin
                 properties: {
                     subgroups: {
                         type: Type.ARRAY,
-                        description: 'Uma lista de EXATAMENTE 6 novos subgrupos.',
+                        description: `Uma lista de EXATAMENTE ${subgroupCount} novos subgrupos.`,
                         items: subgroupSchema
                     }
                 },

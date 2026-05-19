@@ -71,7 +71,7 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({
         </div>
         <h2 className="text-sm font-black uppercase tracking-widest text-brand-text">Start your creative journey</h2>
         <p className="mt-2 text-sm text-brand-subtle max-w-sm leading-relaxed">
-          Enter a theme and click Generate to build your world structure.
+          Enter a theme and click Generate to build your concept structure.
         </p>
       </div>
     );

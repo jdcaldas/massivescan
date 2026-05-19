@@ -2,20 +2,27 @@
 export interface ImageScenario {
   prompt: string;
   base64Image: string;
-  qrCodePosition: 'TL' | 'TR' | 'BL' | 'BR' | '';
-  powerPosition: string;
-  powerLevel: string;
-  characterPosition: string;
-  character: string;
-  frameExist: string;
-  frameType: string;
-  frameColor: string;
-  frameWidth: string;
-  cardSide: string;
-  cardType: string;
-  qrCodeURL: string;
-  mediaURL: string;
-  partner: string;
+  // Positioning
+  qrCodePosition?: string;
+  number_Position?: string;
+  number?: string;
+  boxColorPosition?: string;
+  boxColor?: string;
+  powerPosition?: string;
+  letter_Position?: string;
+  // Legacy / extended
+  powerLevel?: string;
+  characterPosition?: string;
+  character?: string;
+  frameExist?: string;
+  frameType?: string;
+  frameColor?: string;
+  frameWidth?: string;
+  cardSide?: string;
+  cardType?: string;
+  qrCodeURL?: string;
+  mediaURL?: string;
+  partner?: string;
 }
 
 export interface Subgroup {
@@ -37,6 +44,8 @@ export interface Group {
   favoriteImagePromptIndex: number | null;
   isLoading?: boolean;
   isSubgroupsLoading?: boolean;
+  /** Deck Fusion mapping key (e.g. "Grupo A", "Grupo Power-ups") */
+  groupType?: string;
 }
 
 export interface DesignStructure {
@@ -99,4 +108,63 @@ export interface LogEntry {
   model_used: string;
   user_intent: string;
   status: 'Pending' | 'Success' | 'Error';
+}
+
+// ── Deck Fusion types ──────────────────────────────────────────────────────
+
+export interface DeckDetails {
+  deck_name: string;
+  deck_description: string;
+  version: number;
+  baseUrl: string;
+  utilityBaseUrl: string;
+  deck_id: string;
+  errorCorrectionLevel: string;
+}
+
+export interface QRCodeEntry {
+  id: string;
+  pathId: string;
+  key: string;
+  type: string;
+  number?: number;
+  color?: string;
+  letter?: string;
+  stars: number;
+  card_color?: string;
+}
+
+export interface DeckConfig {
+  deck_details: DeckDetails;
+  qrcodes: QRCodeEntry[];
+}
+
+export interface FusionGDesignData {
+  title: string;
+  description: string;
+  mood: string;
+  visual_config: ImageScenario;
+}
+
+export interface MergedQRCode extends QRCodeEntry {
+  gdesign_data?: FusionGDesignData;
+}
+
+export interface MergedDeck {
+  deck_details: DeckDetails & { merge_version?: string };
+  qrcodes: MergedQRCode[];
+}
+
+// ── Deck constraints (drives generation) ──────────────────────────────────────
+
+export interface DeckGroupConstraint {
+  groupType: string;      // "Grupo A", "Grupo B", etc.
+  subgroupCount: number;  // exact number of game_card entries for this tier
+  label: string;          // human-readable label
+}
+
+export interface DeckConstraints {
+  deckFile: string;       // filename (for reference)
+  deckName: string;       // human-readable deck name
+  groups: DeckGroupConstraint[];
 }

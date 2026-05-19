@@ -18,14 +18,15 @@ interface GroupCardProps {
   onUpdate: (field: string, value: any, subIndex?: number, subField?: string, itemIndex?: number, itemProperty?: 'prompt') => void;
 }
 
+// Fixed color sequence — matches the deck's tier system, in order:
+//   01 Yellow → 02 Green → 03 Blue → 04 Magenta → 05 Power-ups → 06 Utility
 const CARD_COLORS = [
-  '#86EFAC', // green-300
-  '#7DD3FC', // sky-300
-  '#FDE68A', // amber-200
-  '#FCA5A5', // red-300
-  '#C4B5FD', // violet-300
-  '#A5F3FC', // cyan-300
-  '#BEF264', // lime-300
+  '#FDE68A', // 01: Yellow tier (amber-200)
+  '#86EFAC', // 02: Green tier (green-300)
+  '#7DD3FC', // 03: Blue tier (sky-300)
+  '#F0ABFC', // 04: Magenta tier (fuchsia-300)
+  '#C4B5FD', // 05: Power-ups (violet-300, special)
+  '#4B5563', // 06: Utility (charcoal gray-600, functional/meta)
 ];
 
 const ImageScenarioItem: React.FC<{
@@ -79,6 +80,11 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, index, viewMode, expandSta
   const isCollapsed = expandState === 'collapsed';
   const isPeek = expandState === 'peek';
   const isExpanded = expandState === 'expanded';
+
+  const coversReady = group.imagePrompts.filter(p => p.base64Image).length;
+  const coversTotal = group.imagePrompts.length;
+  const frontsReady = group.subgroups.reduce((n, sg) => n + sg.imagePrompts.filter(p => p.base64Image).length, 0);
+  const frontsTotal = group.subgroups.reduce((n, sg) => n + sg.imagePrompts.length, 0);
 
   const titleForState = {
     expanded: 'Collapse (click to peek)',
@@ -136,7 +142,35 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, index, viewMode, expandSta
           )}
         </div>
 
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Image counts */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            <div
+              className="flex flex-col items-center px-1.5 py-0.5 border border-black/20 dark:border-brand-primary/30"
+              style={{ borderRadius: 1, backgroundColor: coversReady === coversTotal && coversTotal > 0 ? '#6EE7B7' : undefined, color: coversReady === coversTotal && coversTotal > 0 ? '#1A1A1A' : undefined }}
+              title="Card Covers"
+            >
+              <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest">
+                <span>{coversReady}/{coversTotal}</span>
+                <span className="opacity-50">Covers</span>
+              </div>
+              <span className="text-[8px] font-bold opacity-60 leading-none">{Math.floor(coversTotal / 2)} card{Math.floor(coversTotal / 2) !== 1 ? 's' : ''}</span>
+            </div>
+            {frontsTotal > 0 && (
+              <div
+                className="flex flex-col items-center px-1.5 py-0.5 border border-black/20 dark:border-brand-primary/30"
+                style={{ borderRadius: 1, backgroundColor: frontsReady === frontsTotal ? '#FFE500' : undefined, color: frontsReady === frontsTotal ? '#1A1A1A' : undefined }}
+                title="Card Fronts"
+              >
+                <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest">
+                  <span>{frontsReady}/{frontsTotal}</span>
+                  <span className="opacity-50">Fronts</span>
+                </div>
+                <span className="text-[8px] font-bold opacity-60 leading-none">{Math.floor(frontsTotal / 2)} card{Math.floor(frontsTotal / 2) !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onRegenerateGroup}
             className="p-1.5 text-brand-subtle hover:text-brand-text hover:bg-brand-bg transition-colors"

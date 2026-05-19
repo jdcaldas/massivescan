@@ -73,14 +73,32 @@ export const IMAGE_MODELS = [
 
 // ── Core generate function ───────────────────────────────────────────────────
 
+export const ART_FORMATS = [
+  { id: '1:1',  label: 'Square',   tailwind: 'aspect-square'     },
+  { id: '3:4',  label: 'Portrait', tailwind: 'aspect-[3/4]'      },
+  { id: '16:9', label: 'Wide',     tailwind: 'aspect-video'       },
+] as const;
+
+export type ArtFormatId = typeof ART_FORMATS[number]['id'];
+
+/** Human-readable aspect ratio hints injected into the prompt for Gemini models,
+ *  which don't support an explicit aspectRatio API field. */
+const ASPECT_RATIO_HINT: Record<ArtFormatId, string> = {
+  '1:1':  'Compose the image as a perfect square (1:1 aspect ratio).',
+  '3:4':  'Compose the image in portrait orientation (3:4 aspect ratio, taller than wide).',
+  '16:9': 'Compose the image in landscape/widescreen orientation (16:9 aspect ratio, wider than tall).',
+};
+
 export async function generateImage(
   prompt: string,
   styleId: string,
   modelId: string,
+  aspectRatio: ArtFormatId = '3:4',
   signal?: AbortSignal,
 ): Promise<string> {
   const suffix = IMAGE_STYLES.find(s => s.id === styleId)?.suffix ?? '';
-  const full = suffix ? `${prompt}. Art style: ${suffix}.` : prompt;
+  const base = suffix ? `${prompt}. Art style: ${suffix}.` : prompt;
+  const noText = 'No text, letters, words, labels, captions, or typography of any kind in the image.';
 
   await sem.acquire();
   try {
@@ -89,11 +107,13 @@ export async function generateImage(
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
       if (modelId.startsWith('imagen-')) {
+        // Imagen supports aspectRatio natively via config — no prompt hack needed.
+        const full = `${base} ${noText}`;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const res = await (ai.models as any).generateImages({
           model: modelId,
           prompt: full,
-          config: { numberOfImages: 1, aspectRatio: '1:1', outputMimeType: 'image/jpeg' },
+          config: { numberOfImages: 1, aspectRatio, outputMimeType: 'image/jpeg' },
         });
         const bytes = res?.generatedImages?.[0]?.image?.imageBytes;
         if (!bytes) throw new Error('No image bytes returned');
@@ -104,6 +124,9 @@ export async function generateImage(
         for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
         return btoa(bin);
       } else {
+        // Gemini native image gen: inject aspect ratio hint into the prompt text
+        // since imageGenerationConfig.aspectRatio is not reliably supported.
+        const full = `${base} ${ASPECT_RATIO_HINT[aspectRatio]} ${noText}`;
         const res = await ai.models.generateContent({
           model: modelId,
           contents: [{ role: 'user', parts: [{ text: full }] }],

@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { DesignStructure } from '../types';
-import { generateImage, IMAGE_STYLES, IMAGE_MODELS } from '../services/imageGenService';
+import { generateImage, IMAGE_STYLES, IMAGE_MODELS, ART_FORMATS, type ArtFormatId } from '../services/imageGenService';
 import {
   SparklesIcon, StarIcon, ChevronDownIcon, ChevronUpIcon,
-  SunIcon, MoonIcon, SettingsIcon, RefreshIcon, GridIcon, ListIcon, ChartBarIcon,
+  SunIcon, MoonIcon, SettingsIcon, RefreshIcon, GridIcon, ListIcon, ChartBarIcon, PencilIcon,
 } from './icons';
 import { recordUsage } from '../services/usageService';
 import UsageDashboard from './UsageDashboard';
@@ -17,6 +17,7 @@ interface ImageStudioProps {
   theme: string;
   defaultImageModel?: string;
   onBack: () => void;
+  onGoToCards?: () => void;
   onSave: (updated: DesignStructure) => void;
   isDarkMode: boolean;
   setIsDarkMode: (v: boolean) => void;
@@ -32,23 +33,26 @@ interface ImageSlotProps {
   genState: GenState;
   error?: string;
   isFavorite: boolean;
-  onGenerate: () => void;
+  onGenerate: (extra?: string) => void;
   onFavorite: () => void;
   onZoom?: () => void;
   size?: 'normal' | 'small';
+  aspectRatio?: string; // e.g. '1/1', '3/4', '16/9'
 }
 
 const ImageSlot: React.FC<ImageSlotProps> = ({
-  base64, prompt, genState, error, isFavorite, onGenerate, onFavorite, onZoom, size = 'normal',
+  base64, prompt, genState, error, isFavorite, onGenerate, onFavorite, onZoom, size = 'normal', aspectRatio = '1/1',
 }) => {
   const isSmall = size === 'small';
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [promptExpanded, setPromptExpanded] = useState(false);
   return (
     <div
       className={`neo-card overflow-hidden flex flex-col ${isFavorite ? '' : ''}`}
       style={{ boxShadow: isFavorite ? `3px 3px 0 0 #fbbf24` : '3px 3px 0 0 #000', borderColor: isFavorite ? '#fbbf24' : undefined }}
     >
       {/* Image area */}
-      <div className={`relative ${isSmall ? 'aspect-square' : 'aspect-square'} bg-brand-bg overflow-hidden flex-shrink-0`}>
+      <div className="relative bg-brand-bg overflow-hidden flex-shrink-0" style={{ aspectRatio }}>
         {base64 ? (
           <img
             src={`data:image/jpeg;base64,${base64}`}
@@ -86,9 +90,19 @@ const ImageSlot: React.FC<ImageSlotProps> = ({
 
       {/* Footer */}
       <div className={`${isSmall ? 'p-1.5' : 'p-2.5'} flex-1 flex flex-col`}>
-        <p className={`${isSmall ? 'text-[8px] min-h-[2em]' : 'text-[9px] min-h-[2.5em]'} text-brand-subtle line-clamp-2 leading-relaxed flex-1`}>
-          {prompt}
-        </p>
+        <button
+          onClick={() => setPromptExpanded(v => !v)}
+          className={`text-left ${isSmall ? 'text-[8px]' : 'text-[9px]'} text-brand-subtle leading-relaxed flex-1 w-full hover:text-brand-text transition-colors`}
+          title={promptExpanded ? 'Collapse prompt' : 'Expand prompt'}
+        >
+          <span className={promptExpanded ? undefined : 'line-clamp-2'}>{prompt}</span>
+          {!promptExpanded && (
+            <span className="ml-1 text-[8px] font-black uppercase tracking-widest text-brand-subtle/40 hover:text-brand-subtle">▾</span>
+          )}
+          {promptExpanded && (
+            <span className="block text-[8px] font-black uppercase tracking-widest text-brand-subtle/40 mt-1">▴ collapse</span>
+          )}
+        </button>
         <div className="flex items-center justify-between mt-1.5">
           <button
             onClick={onFavorite}
@@ -100,17 +114,131 @@ const ImageSlot: React.FC<ImageSlotProps> = ({
             {isFavorite ? 'Hero' : 'Star'}
           </button>
           {base64 && (
-            <button
-              onClick={onGenerate}
-              disabled={genState === 'generating'}
-              className="p-0.5 text-brand-subtle hover:text-brand-text transition-colors disabled:opacity-30"
-              title="Regenerate"
-            >
-              <RefreshIcon className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setRegenOpen(v => !v)}
+                onMouseDown={e => e.stopPropagation()}
+                disabled={genState === 'generating'}
+                className={`p-0.5 transition-colors disabled:opacity-30 ${regenOpen ? 'text-brand-text' : 'text-brand-subtle hover:text-brand-text'}`}
+                title="Regenerate options"
+              >
+                <RefreshIcon className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
+              </button>
+              {regenOpen && (
+                <RegenMenu
+                  onClose={() => setRegenOpen(false)}
+                  onSimple={() => { onGenerate(); setRegenOpen(false); }}
+                  onWithExtra={(extra) => { onGenerate(extra); setRegenOpen(false); }}
+                  isGenerating={genState === 'generating'}
+                />
+              )}
+            </div>
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+// ── Regen popover menu ───────────────────────────────────────────────────────
+
+interface RegenMenuProps {
+  onClose: () => void;
+  onSimple: () => void;
+  onWithExtra: (extra: string) => void;
+  isGenerating: boolean;
+}
+
+const RegenMenu: React.FC<RegenMenuProps> = ({ onClose, onSimple, onWithExtra, isGenerating }) => {
+  const [mode, setMode] = useState<'menu' | 'extra'>('menu');
+  const [extraText, setExtraText] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute bottom-full right-0 mb-1 z-30 bg-brand-surface border-2 border-black dark:border-brand-primary"
+      style={{ boxShadow: '3px 3px 0 #000', borderRadius: 1, minWidth: 168 }}
+    >
+      {mode === 'menu' ? (
+        <>
+          {/* Quick regen */}
+          <button
+            onClick={() => { onSimple(); }}
+            disabled={isGenerating}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-brand-text hover:bg-brand-bg disabled:opacity-40 border-b border-black/10 dark:border-brand-primary/20 text-left transition-colors"
+          >
+            <RefreshIcon className="w-3 h-3 flex-shrink-0" />
+            Quick regen
+          </button>
+          {/* Extra prompt */}
+          <button
+            onClick={() => setMode('extra')}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-brand-text hover:bg-brand-bg border-b border-black/10 dark:border-brand-primary/20 text-left transition-colors"
+          >
+            <PencilIcon className="w-3 h-3 flex-shrink-0" />
+            + Extra prompt
+          </button>
+          {/* Force no text */}
+          <button
+            onClick={() => {
+              onWithExtra('CRITICAL: absolutely zero text, zero letters, zero numbers, zero words, zero captions, zero labels, no typography of any kind anywhere in the image. If you were going to add any text, replace it with a visual element instead.');
+            }}
+            disabled={isGenerating}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-brand-text hover:bg-brand-bg disabled:opacity-40 text-left transition-colors"
+          >
+            <svg viewBox="0 0 12 12" className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <circle cx="6" cy="6" r="5" />
+              <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" />
+            </svg>
+            No text
+          </button>
+        </>
+      ) : (
+        /* Extra prompt input mode */
+        <div className="p-2.5">
+          <div className="flex items-center gap-1.5 mb-2">
+            <button
+              onClick={() => setMode('menu')}
+              className="text-[9px] text-brand-subtle hover:text-brand-text font-black transition-colors leading-none"
+              title="Back"
+            >←</button>
+            <span className="text-[9px] font-black uppercase tracking-widest text-brand-subtle">Extra instructions</span>
+          </div>
+          <textarea
+            value={extraText}
+            onChange={e => setExtraText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey && extraText.trim()) {
+                e.preventDefault();
+                onWithExtra(extraText.trim());
+              }
+              if (e.key === 'Escape') onClose();
+            }}
+            placeholder="e.g. night scene, close-up, more vibrant…"
+            className="neo-input w-full text-[10px] bg-brand-bg text-brand-text px-2 py-1.5 resize-none placeholder:text-brand-subtle/40"
+            rows={3}
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
+          />
+          <button
+            onClick={() => { if (extraText.trim()) onWithExtra(extraText.trim()); }}
+            disabled={!extraText.trim() || isGenerating}
+            className="neo-btn w-full mt-2 py-1.5 text-[10px] font-black bg-brand-text text-brand-surface disabled:opacity-40"
+            style={{ boxShadow: '2px 2px 0 0 #000' }}
+          >
+            Generate ↵
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -153,12 +281,13 @@ const StepIndicator: React.FC = () => (
 // ── Main component ───────────────────────────────────────────────────────────
 
 const ImageStudio: React.FC<ImageStudioProps> = ({
-  designStructure, theme, defaultImageModel, onBack, onSave, isDarkMode, setIsDarkMode, onOpenSettings, projectName,
+  designStructure, theme, defaultImageModel, onBack, onGoToCards, onSave, isDarkMode, setIsDarkMode, onOpenSettings, projectName,
 }) => {
   const [structure, setStructure] = useState<DesignStructure>(() =>
     JSON.parse(JSON.stringify(designStructure))
   );
   const [selectedStyle, setSelectedStyle] = useState(IMAGE_STYLES[0].id);
+  const [selectedFormat, setSelectedFormat] = useState<ArtFormatId>('3:4');
   const [selectedModel, setSelectedModel] = useState(() => {
     const isValid = IMAGE_MODELS.some(m => m.id === defaultImageModel);
     return isValid ? (defaultImageModel ?? IMAGE_MODELS[0].id) : IMAGE_MODELS[0].id;
@@ -171,6 +300,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   const [expandedSubgroups, setExpandedSubgroups] = useState<Record<string, boolean>>({});
   const [isUsageOpen, setIsUsageOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; label: string } | null>(null);
+  const [gridRegenKey, setGridRegenKey] = useState<string | null>(null);
+  const [showErrorLog, setShowErrorLog] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const structureRef = useRef(structure);
 
@@ -178,6 +309,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
   const generatingCount = Object.values(genStates).filter(s => s === 'generating').length;
   const isAnyGenerating = generatingCount > 0;
+  const errorCount = Object.keys(genErrors).length;
 
   const totalGroupDone = structure.groups.reduce((n, g) => n + g.imagePrompts.filter(p => p.base64Image).length, 0);
   const totalGroupSlots = structure.groups.reduce((n, g) => n + g.imagePrompts.length, 0);
@@ -194,7 +326,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
     try {
       const base64 = await generateImage(
-        prompt, selectedStyle, selectedModel, abortRef.current?.signal,
+        prompt, selectedStyle, selectedModel, selectedFormat, abortRef.current?.signal,
       );
       // Apply to latest structure (via ref to avoid stale closure)
       const updated = applyResult(base64, structureRef.current);
@@ -212,16 +344,17 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       setGenStates(prev => ({ ...prev, [key]: 'error' }));
       setGenErrors(prev => ({ ...prev, [key]: err?.message ?? String(e) }));
     }
-  }, [selectedStyle, selectedModel, onSave]);
+  }, [selectedStyle, selectedModel, selectedFormat, onSave]);
 
   // ── Group image generation ───────────────────────────────────────────────
 
-  const generateGroupImage = useCallback((gi: number, pi: number) => {
+  const generateGroupImage = useCallback((gi: number, pi: number, extraPrompt?: string) => {
     const key = `g${gi}_${pi}`;
     const group = structureRef.current.groups[gi];
     const scenario = group.imagePrompts[pi];
     if (!scenario) return Promise.resolve();
-    const prompt = `${group.title}. ${group.description}. Art direction: ${group.mood}. Scene: ${scenario.prompt}`;
+    const base = `${group.title}. ${group.description}. Art direction: ${group.mood}. Scene: ${scenario.prompt}`;
+    const prompt = extraPrompt ? `${base}. Additional directions: ${extraPrompt}` : base;
     return doGenerate(key, prompt, (base64, prev) => {
       const s: DesignStructure = JSON.parse(JSON.stringify(prev));
       s.groups[gi].imagePrompts[pi].base64Image = base64;
@@ -231,7 +364,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
   // ── Subgroup image generation ────────────────────────────────────────────
 
-  const generateSubgroupImage = useCallback((gi: number, si: number, pi: number) => {
+  const generateSubgroupImage = useCallback((gi: number, si: number, pi: number, extraPrompt?: string) => {
     const key = `g${gi}_sg${si}_${pi}`;
     const group = structureRef.current.groups[gi];
     const favIdx = group.favoriteImagePromptIndex ?? 0;
@@ -239,7 +372,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     const sg = group.subgroups[si];
     const scenario = sg.imagePrompts[pi];
     if (!scenario) return Promise.resolve();
-    const prompt = `Setting: ${group.title} universe (reference: ${favPrompt}). Subgroup: ${sg.title}. ${sg.description}. Art direction: ${sg.mood}. Scene: ${scenario.prompt}`;
+    const base = `Setting: ${group.title} universe (reference: ${favPrompt}). Subgroup: ${sg.title}. ${sg.description}. Art direction: ${sg.mood}. Scene: ${scenario.prompt}`;
+    const prompt = extraPrompt ? `${base}. Additional directions: ${extraPrompt}` : base;
     return doGenerate(key, prompt, (base64, prev) => {
       const s: DesignStructure = JSON.parse(JSON.stringify(prev));
       s.groups[gi].subgroups[si].imagePrompts[pi].base64Image = base64;
@@ -298,9 +432,10 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       const s: DesignStructure = JSON.parse(JSON.stringify(prev));
       s.groups[gi].favoriteImagePromptIndex = s.groups[gi].favoriteImagePromptIndex === pi ? null : pi;
       structureRef.current = s;
+      onSave(s);
       return s;
     });
-  }, []);
+  }, [onSave]);
 
   const toggleSubFavorite = useCallback((gi: number, si: number, pi: number) => {
     setStructure(prev => {
@@ -308,9 +443,10 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       s.groups[gi].subgroups[si].favoriteImagePromptIndex =
         s.groups[gi].subgroups[si].favoriteImagePromptIndex === pi ? null : pi;
       structureRef.current = s;
+      onSave(s);
       return s;
     });
-  }, []);
+  }, [onSave]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -420,18 +556,65 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                 </React.Fragment>
               ))}
             </div>
-            <select
-              value={selectedModel}
-              onChange={e => setSelectedModel(e.target.value)}
-              className="neo-input bg-brand-bg text-xs font-black text-brand-text outline-none cursor-pointer px-3 py-1.5 flex-shrink-0"
-            >
-              {IMAGE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
+            {/* Art format toggle */}
+            {(() => {
+              const FORMAT_COLORS: Record<string, { bg: string; shape: { w: number; h: number } }> = {
+                '1:1':  { bg: '#6EE7B7', shape: { w: 10, h: 10 } },
+                '3:4':  { bg: '#FFE500', shape: { w: 8,  h: 11 } },
+                '16:9': { bg: '#7DD3FC', shape: { w: 14, h: 8  } },
+              };
+              return (
+                <div
+                  className="flex items-stretch border-2 border-black dark:border-brand-primary overflow-hidden flex-shrink-0"
+                  style={{ boxShadow: '2px 2px 0 0 #000' }}
+                >
+                  {ART_FORMATS.map((fmt, i) => {
+                    const isActive = selectedFormat === fmt.id;
+                    const meta = FORMAT_COLORS[fmt.id];
+                    return (
+                      <React.Fragment key={fmt.id}>
+                        {i > 0 && <div className="w-px bg-black dark:bg-brand-primary flex-shrink-0" />}
+                        <button
+                          onClick={() => setSelectedFormat(fmt.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors whitespace-nowrap"
+                          style={{
+                            backgroundColor: isActive ? meta.bg : undefined,
+                            color: isActive ? '#1A1A1A' : undefined,
+                          }}
+                          title={`Generate images in ${fmt.label} format (${fmt.id})`}
+                        >
+                          {/* Tiny aspect-ratio shape icon */}
+                          <span
+                            className="flex-shrink-0 border-2 border-current"
+                            style={{ width: meta.shape.w, height: meta.shape.h, borderRadius: 1, opacity: isActive ? 1 : 0.4 }}
+                          />
+                          <span className={isActive ? 'text-[#1A1A1A]' : 'text-brand-subtle'}>{fmt.label}</span>
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
             {isAnyGenerating && (
               <span className="text-xs font-mono text-brand-subtle">{generatingCount} generating…</span>
             )}
             {!isAnyGenerating && totalGroupDone > 0 && (
               <span className="text-[10px] text-brand-subtle">{totalGroupDone}/{totalGroupSlots} ready</span>
+            )}
+            {errorCount > 0 && (
+              <button
+                onClick={() => setShowErrorLog(v => !v)}
+                className="flex items-center gap-1 border-2 border-black px-2.5 py-1 text-[10px] font-black uppercase tracking-widest transition-colors"
+                style={{
+                  backgroundColor: showErrorLog ? '#FF4F6D' : '#FEE2E2',
+                  color: showErrorLog ? '#FFFFFF' : '#991B1B',
+                  boxShadow: '2px 2px 0 #000', borderRadius: 1,
+                }}
+              >
+                ⚠ {errorCount} error{errorCount !== 1 ? 's' : ''}
+              </button>
             )}
           </div>
 
@@ -467,7 +650,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
             )}
           </div>
 
-          {/* RIGHT — view toggle + zoom + back */}
+          {/* RIGHT — model + view toggle + zoom + back */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={onBack}
@@ -476,6 +659,14 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
             >
               ← Concept
             </button>
+
+            <select
+              value={selectedModel}
+              onChange={e => setSelectedModel(e.target.value)}
+              className="neo-input bg-brand-bg text-xs font-black text-brand-text outline-none cursor-pointer px-3 py-1.5 flex-shrink-0"
+            >
+              {IMAGE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
 
             {viewMode === 'grid' && (
               <div
@@ -516,6 +707,19 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                 <GridIcon className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {/* → Cards — only visible once images exist */}
+            {onGoToCards && totalGroupDone > 0 && (
+              <button
+                onClick={onGoToCards}
+                disabled={isAnyGenerating}
+                className="flex items-center gap-2 border-2 border-black px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-text hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
+                style={{ backgroundColor: '#6EE7B7', boxShadow: '3px 3px 0 #000', borderRadius: 1 }}
+                title="Go to Cards module"
+              >
+                Cards →
+              </button>
+            )}
           </div>
 
         </div>
@@ -523,6 +727,82 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
       {/* ── Groups ──────────────────────────────────────────────────────── */}
       <main className="flex-grow max-w-6xl mx-auto w-full px-6 py-6">
+
+        {/* ── Error log panel ─────────────────────────────────────────────── */}
+        {showErrorLog && errorCount > 0 && (
+          <div
+            className="mb-5 border-2 border-black overflow-hidden"
+            style={{ backgroundColor: '#FFF1F2', boxShadow: '3px 3px 0 #000', borderRadius: 1 }}
+          >
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b-2 border-black/10" style={{ backgroundColor: '#FFE4E6' }}>
+              <span className="text-[10px] font-black uppercase tracking-widest text-red-700">
+                ⚠ Error Log — {errorCount} failed slot{errorCount !== 1 ? 's' : ''}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    Object.keys(genErrors).forEach(key => {
+                      const sgM = key.match(/^g(\d+)_sg(\d+)_(\d+)$/);
+                      const gM  = key.match(/^g(\d+)_(\d+)$/);
+                      if (sgM) generateSubgroupImage(+sgM[1], +sgM[2], +sgM[3]);
+                      else if (gM) generateGroupImage(+gM[1], +gM[2]);
+                    });
+                  }}
+                  disabled={isAnyGenerating}
+                  className="border-2 border-black px-2 py-0.5 text-[9px] font-black uppercase tracking-widest bg-white text-red-700 hover:bg-red-50 disabled:opacity-40"
+                  style={{ borderRadius: 1 }}
+                >
+                  Retry All
+                </button>
+                <button
+                  onClick={() => setGenErrors({})}
+                  className="border-2 border-black px-2 py-0.5 text-[9px] font-black uppercase tracking-widest bg-white text-red-700 hover:bg-red-50"
+                  style={{ borderRadius: 1 }}
+                >
+                  Clear
+                </button>
+                <button onClick={() => setShowErrorLog(false)} className="text-red-400 hover:text-red-700 font-black text-sm leading-none transition-colors">✕</button>
+              </div>
+            </div>
+
+            {/* Error rows */}
+            <div className="divide-y divide-black/10 max-h-48 overflow-y-auto">
+              {Object.entries(genErrors).map(([key, msg]) => {
+                let label = key;
+                const sgM = key.match(/^g(\d+)_sg(\d+)_(\d+)$/);
+                const gM  = key.match(/^g(\d+)_(\d+)$/);
+                if (sgM) {
+                  const gi = +sgM[1], si = +sgM[2], pi = +sgM[3];
+                  const gTitle  = structure.groups[gi]?.title  ?? `Group ${gi + 1}`;
+                  const sgTitle = structure.groups[gi]?.subgroups[si]?.title ?? `SG ${si + 1}`;
+                  label = `${gTitle}  ·  ${sgTitle}  ·  Slot ${pi + 1}`;
+                } else if (gM) {
+                  const gi = +gM[1], pi = +gM[2];
+                  const gTitle = structure.groups[gi]?.title ?? `Group ${gi + 1}`;
+                  label = `${gTitle}  ·  Cover ${pi + 1}`;
+                }
+                return (
+                  <div key={key} className="flex items-start gap-3 px-4 py-2">
+                    <span className="text-[10px] font-black text-red-800 flex-shrink-0 min-w-[180px]">{label}</span>
+                    <span className="text-[10px] font-mono text-red-600 flex-1">{msg}</span>
+                    <button
+                      onClick={() => {
+                        const sgM2 = key.match(/^g(\d+)_sg(\d+)_(\d+)$/);
+                        const gM2  = key.match(/^g(\d+)_(\d+)$/);
+                        if (sgM2) generateSubgroupImage(+sgM2[1], +sgM2[2], +sgM2[3]);
+                        else if (gM2) generateGroupImage(+gM2[1], +gM2[2]);
+                      }}
+                      disabled={isAnyGenerating}
+                      className="flex-shrink-0 border border-black/20 px-1.5 py-0.5 text-[9px] font-black bg-white text-red-700 hover:bg-red-50 disabled:opacity-40"
+                      style={{ borderRadius: 1 }}
+                    >↺</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── GRID VIEW ─────────────────────────────────────────────────── */}
         {viewMode === 'grid' && (
@@ -595,13 +875,28 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                 </div>
                               )}
                               {scenario.base64Image && (
-                                <div className="absolute bottom-0 right-0 flex items-center gap-0.5 p-0.5 opacity-0 hover:opacity-100 transition-opacity bg-black/30">
+                                <div className={`absolute bottom-0 right-0 flex items-center gap-0.5 p-0.5 transition-opacity bg-black/30 ${gridRegenKey === key ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
                                   <button onClick={() => toggleGroupFavorite(gi, pi)} className={`p-0.5 ${isFav ? 'text-amber-400' : 'text-white'}`}>
                                     <StarIcon isFilled={isFav} className="w-3 h-3" />
                                   </button>
-                                  <button onClick={() => generateGroupImage(gi, pi)} className="p-0.5 text-white">
-                                    <RefreshIcon className="w-3 h-3" />
-                                  </button>
+                                  <div className="relative">
+                                    <button
+                                      onClick={() => setGridRegenKey(prev => prev === key ? null : key)}
+                                      onMouseDown={e => e.stopPropagation()}
+                                      className={`p-0.5 transition-colors ${gridRegenKey === key ? 'text-brand-secondary' : 'text-white'}`}
+                                      title="Regenerate options"
+                                    >
+                                      <RefreshIcon className="w-3 h-3" />
+                                    </button>
+                                    {gridRegenKey === key && (
+                                      <RegenMenu
+                                        onClose={() => setGridRegenKey(null)}
+                                        onSimple={() => { generateGroupImage(gi, pi); setGridRegenKey(null); }}
+                                        onWithExtra={(extra) => { generateGroupImage(gi, pi, extra); setGridRegenKey(null); }}
+                                        isGenerating={genStates[key] === 'generating'}
+                                      />
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -658,13 +953,28 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                     </div>
                                   )}
                                   {imgS.base64Image && (
-                                    <div className="absolute bottom-0 right-0 flex items-center gap-0.5 p-0.5 opacity-0 hover:opacity-100 transition-opacity bg-black/30">
+                                    <div className={`absolute bottom-0 right-0 flex items-center gap-0.5 p-0.5 transition-opacity bg-black/30 ${gridRegenKey === key ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
                                       <button onClick={() => toggleSubFavorite(gi, si, pi)} className={`p-0.5 ${isSgFav ? 'text-amber-400' : 'text-white'}`}>
                                         <StarIcon isFilled={isSgFav} className="w-3 h-3" />
                                       </button>
-                                      <button onClick={() => generateSubgroupImage(gi, si, pi)} className="p-0.5 text-white">
-                                        <RefreshIcon className="w-3 h-3" />
-                                      </button>
+                                      <div className="relative">
+                                        <button
+                                          onClick={() => setGridRegenKey(prev => prev === key ? null : key)}
+                                          onMouseDown={e => e.stopPropagation()}
+                                          className={`p-0.5 transition-colors ${gridRegenKey === key ? 'text-brand-secondary' : 'text-white'}`}
+                                          title="Regenerate options"
+                                        >
+                                          <RefreshIcon className="w-3 h-3" />
+                                        </button>
+                                        {gridRegenKey === key && (
+                                          <RegenMenu
+                                            onClose={() => setGridRegenKey(null)}
+                                            onSimple={() => { generateSubgroupImage(gi, si, pi); setGridRegenKey(null); }}
+                                            onWithExtra={(extra) => { generateSubgroupImage(gi, si, pi, extra); setGridRegenKey(null); }}
+                                            isGenerating={genStates[key] === 'generating'}
+                                          />
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -731,7 +1041,11 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                 <div className="px-5 pb-6 border-t border-black/10 dark:border-brand-primary/20">
 
                   {/* Group image pair */}
-                  <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="mt-4 flex items-center gap-2 mb-2">
+                    <span className="neo-section-label">Card Covers</span>
+                    <div className="flex-1 h-px bg-black/10 dark:bg-brand-primary/10" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     {group.imagePrompts.map((scenario, pi) => {
                       const key = `g${gi}_${pi}`;
                       return (
@@ -742,9 +1056,10 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                           genState={genStates[key] ?? 'idle'}
                           error={genErrors[key]}
                           isFavorite={group.favoriteImagePromptIndex === pi}
-                          onGenerate={() => generateGroupImage(gi, pi)}
+                          onGenerate={(extra) => generateGroupImage(gi, pi, extra)}
                           onFavorite={() => toggleGroupFavorite(gi, pi)}
                           onZoom={scenario.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `${group.title} · IMG ${pi + 1}` }) : undefined}
+                          aspectRatio={selectedFormat.replace(':', '/')}
                         />
                       );
                     })}
@@ -753,7 +1068,10 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                   {/* Subgroups section */}
                   <div className="mt-5">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="neo-section-label">Subgroups</span>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="neo-section-label">Subgroups</span>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-brand-subtle/40">· Card Fronts</span>
+                      </div>
                       {hasFavorite ? (
                         <button
                           onClick={() => generateGroupSubgroups(gi)}
@@ -821,10 +1139,11 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                         genState={genStates[key] ?? 'idle'}
                                         error={genErrors[key]}
                                         isFavorite={sg.favoriteImagePromptIndex === pi}
-                                        onGenerate={() => generateSubgroupImage(gi, si, pi)}
+                                        onGenerate={(extra) => generateSubgroupImage(gi, si, pi, extra)}
                                         onFavorite={() => toggleSubFavorite(gi, si, pi)}
                                         onZoom={imgS.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `${group.title} · ${sg.title} · SG${si + 1}·${pi + 1}` }) : undefined}
                                         size="small"
+                                        aspectRatio={selectedFormat.replace(':', '/')}
                                       />
                                     );
                                   })}
