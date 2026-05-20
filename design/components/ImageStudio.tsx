@@ -838,8 +838,13 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                   {/* Image grid — pairs of cards with a thin separator between each pair */}
                   <div className="flex flex-wrap gap-y-2 items-start">
 
-                    {/* ── Pair 0: group images (IMG 1 + IMG 2) ── */}
-                    <div className={`flex gap-1 ${group.subgroups.length > 0 ? 'pr-2 mr-1 border-r-2 border-black/10' : ''}`}>
+                    {/* ── Pair 0: group images (COVER 1 + COVER 2) ── */}
+                    <div className={`flex flex-col ${group.subgroups.length > 0 ? 'pr-3 mr-2 border-r-2 border-black/20' : ''}`}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="px-1.5 py-px text-[7px] font-black uppercase tracking-widest bg-brand-text text-brand-surface" style={{ borderRadius: 1 }}>Cover</span>
+                        <span className="text-[7px] font-black text-brand-subtle/40 uppercase tracking-wide">pick 1</span>
+                      </div>
+                      <div className="flex gap-1">
                       {group.imagePrompts.map((scenario, pi) => {
                         const key = `g${gi}_${pi}`;
                         const isFav = group.favoriteImagePromptIndex === pi;
@@ -897,12 +902,13 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                             </div>
                             <div className="px-1.5 py-1">
                               <p className="text-[8px] font-black text-brand-subtle/50 uppercase tracking-widest truncate">
-                                IMG {pi + 1}
+                                Cover {pi + 1}
                               </p>
                             </div>
                           </div>
                         );
                       })}
+                      </div>
                     </div>
 
                     {/* ── Pairs 1…N: one pair per subgroup (SG1·1+SG1·2, SG2·1+SG2·2 …) ── */}
@@ -912,8 +918,13 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                       return (
                         <div
                           key={si}
-                          className={`flex gap-1 ${!isLastPair ? 'pr-2 mr-1 border-r-2 border-black/10' : ''}`}
+                          className={`flex flex-col ${!isLastPair ? 'pr-3 mr-2 border-r-2 border-black/15' : ''}`}
                         >
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="text-[7px] font-black uppercase tracking-widest text-brand-subtle/60 truncate max-w-[90px]" title={sg.title}>{sg.title}</span>
+                            <span className="text-[7px] text-brand-subtle/40 flex-shrink-0">· 1/2</span>
+                          </div>
+                          <div className="flex gap-1">
                           {sg.imagePrompts.map((imgS, pi) => {
                             const key = `g${gi}_sg${si}_${pi}`;
                             const isSgFav = sg.favoriteImagePromptIndex === pi;
@@ -975,12 +986,13 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                 </div>
                                 <div className="px-1.5 py-1">
                                   <p className="text-[8px] font-black text-brand-subtle/40 uppercase tracking-widest truncate" title={sg.title}>
-                                    SG{si + 1}·{pi + 1}
+                                    {pi + 1} / 2
                                   </p>
                                 </div>
                               </div>
                             );
                           })}
+                          </div>
                         </div>
                       );
                     })}
