@@ -59,6 +59,24 @@ interface ImageSlotProps {
   aspectRatio?: string; // e.g. '1/1', '3/4', '16/9'
 }
 
+// ── No-pick placeholder ─────────────────────────────────────────────────────
+const NoPick: React.FC<{ width: number; label?: string }> = ({ width, label }) => (
+  <div
+    className="overflow-hidden flex-shrink-0 border-2 border-dashed border-amber-400/50 flex flex-col"
+    style={{ width, borderRadius: 1 }}
+  >
+    <div className="aspect-square w-full bg-brand-bg/50 flex flex-col items-center justify-center gap-1.5">
+      <StarIcon className="w-4 h-4 text-amber-400/40" />
+      <span className="text-[7px] font-black uppercase tracking-widest text-brand-subtle/40 text-center px-2 leading-tight">
+        no pick yet
+      </span>
+    </div>
+    <div className="px-1.5 py-1">
+      <p className="text-[8px] font-black text-brand-subtle/30 uppercase tracking-widest">{label ?? '—'}</p>
+    </div>
+  </div>
+);
+
 const ImageSlot: React.FC<ImageSlotProps> = ({
   base64, prompt, genState, error, isFavorite, onGenerate, onFavorite, onZoom, size = 'normal', aspectRatio = '1/1',
 }) => {
@@ -329,6 +347,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   const [expandedSubgroups, setExpandedSubgroups] = useState<Record<string, boolean>>({});
   const [isUsageOpen, setIsUsageOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; label: string; colorHex?: string } | null>(null);
+  const [showStarredOnly, setShowStarredOnly] = useState(false);
   const [gridRegenKey, setGridRegenKey] = useState<string | null>(null);
   const [showErrorLog, setShowErrorLog] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -705,6 +724,16 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
               </div>
             )}
 
+            <button
+              onClick={() => setShowStarredOnly(v => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-black dark:border-brand-primary text-[10px] font-black uppercase tracking-widest transition-colors ${showStarredOnly ? 'bg-amber-400 text-black' : 'bg-brand-surface text-brand-subtle hover:bg-brand-bg'}`}
+              style={{ boxShadow: '2px 2px 0 0 #000', borderRadius: 1 }}
+              title={showStarredOnly ? 'Showing starred only — click to show all' : 'Show starred picks only'}
+            >
+              <StarIcon isFilled={showStarredOnly} className="w-3 h-3" />
+              Starred
+            </button>
+
             <div
               className="flex items-stretch border-2 border-black dark:border-brand-primary overflow-hidden"
               style={{ boxShadow: '2px 2px 0 0 #000' }}
@@ -859,6 +888,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                       {group.imagePrompts.map((scenario, pi) => {
                         const key = `g${gi}_${pi}`;
                         const isFav = group.favoriteImagePromptIndex === pi;
+                        if (showStarredOnly && !isFav) return null;
                         return (
                           <div
                             key={key}
@@ -920,6 +950,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                           </div>
                         );
                       })}
+                      {showStarredOnly && group.favoriteImagePromptIndex == null && (
+                        <NoPick width={gridZoom} label="Cover" />
+                      )}
                       </div>
                     </div>
 
@@ -940,6 +973,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                           {sg.imagePrompts.map((imgS, pi) => {
                             const key = `g${gi}_sg${si}_${pi}`;
                             const isSgFav = sg.favoriteImagePromptIndex === pi;
+                            if (showStarredOnly && !isSgFav) return null;
                             return (
                               <div
                                 key={key}
@@ -1005,6 +1039,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                               </div>
                             );
                           })}
+                          {showStarredOnly && sg.favoriteImagePromptIndex == null && (
+                            <NoPick width={gridZoom} />
+                          )}
                           </div>
                         </div>
                       );
