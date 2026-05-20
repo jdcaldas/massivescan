@@ -328,7 +328,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({ 0: true });
   const [expandedSubgroups, setExpandedSubgroups] = useState<Record<string, boolean>>({});
   const [isUsageOpen, setIsUsageOpen] = useState(false);
-  const [lightbox, setLightbox] = useState<{ src: string; label: string } | null>(null);
+  const [lightbox, setLightbox] = useState<{ src: string; label: string; colorHex?: string } | null>(null);
   const [gridRegenKey, setGridRegenKey] = useState<string | null>(null);
   const [showErrorLog, setShowErrorLog] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -872,7 +872,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                   src={`data:image/jpeg;base64,${scenario.base64Image}`}
                                   alt=""
                                   className="w-full h-full object-cover cursor-zoom-in"
-                                  onClick={() => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `Card Cover · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${group.title}` })}
+                                  onClick={() => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `Card Cover · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${group.title}`, colorHex: CARD_COLORS[gi % CARD_COLORS.length] })}
                                 />
                               ) : genStates[key] === 'generating' ? (
                                 <div className="absolute inset-0 flex items-center justify-center bg-brand-bg">
@@ -953,7 +953,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                       src={`data:image/jpeg;base64,${imgS.base64Image}`}
                                       alt=""
                                       className="w-full h-full object-cover cursor-zoom-in"
-                                      onClick={() => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `Card Front · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${sg.title}` })}
+                                      onClick={() => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `Card Front · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${sg.title}`, colorHex: CARD_COLORS[gi % CARD_COLORS.length] })}
                                     />
                                   ) : genStates[key] === 'generating' ? (
                                     <div className="absolute inset-0 flex items-center justify-center bg-brand-bg">
@@ -1085,7 +1085,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                           isFavorite={group.favoriteImagePromptIndex === pi}
                           onGenerate={(extra) => generateGroupImage(gi, pi, extra)}
                           onFavorite={() => toggleGroupFavorite(gi, pi)}
-                          onZoom={scenario.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `Card Cover · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${group.title}` }) : undefined}
+                          onZoom={scenario.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `Card Cover · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${group.title}`, colorHex: CARD_COLORS[gi % CARD_COLORS.length] }) : undefined}
                           aspectRatio={selectedFormat.replace(':', '/')}
                         />
                       );
@@ -1168,7 +1168,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                         isFavorite={sg.favoriteImagePromptIndex === pi}
                                         onGenerate={(extra) => generateSubgroupImage(gi, si, pi, extra)}
                                         onFavorite={() => toggleSubFavorite(gi, si, pi)}
-                                        onZoom={imgS.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `Card Front · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${sg.title}` }) : undefined}
+                                        onZoom={imgS.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `Card Front · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${sg.title}`, colorHex: CARD_COLORS[gi % CARD_COLORS.length] }) : undefined}
                                         size="small"
                                         aspectRatio={selectedFormat.replace(':', '/')}
                                       />
@@ -1231,7 +1231,16 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
             {/* Label */}
             <span className="text-[11px] font-black uppercase tracking-widest text-white/70">
-              {lightbox.label}
+              {lightbox.colorHex
+                ? lightbox.label.split(' · ').map((part, i, arr) => (
+                    <span key={i}>
+                      {CARD_COLOR_NAMES.includes(part)
+                        ? <span style={{ color: lightbox.colorHex }}>{part}</span>
+                        : part}
+                      {i < arr.length - 1 && <span className="text-white/30"> · </span>}
+                    </span>
+                  ))
+                : lightbox.label}
             </span>
           </div>
         </div>
