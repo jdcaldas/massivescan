@@ -475,17 +475,6 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       <header className="bg-brand-surface border-b-2 border-black dark:border-brand-primary sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-3">
 
-          {/* Back arrow */}
-          <button
-            onClick={onBack}
-            className="p-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0"
-            title="Back to Concept Studio"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-          </button>
-
           {/* Project badge */}
           {projectName && (
             <div
@@ -506,20 +495,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
             <div className="text-sm font-black uppercase tracking-tight leading-tight text-brand-text truncate max-w-[220px]" title={theme}>{theme}</div>
           </div>
 
-          {/* Right zone */}
+          {/* Right zone — utilities only */}
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-
-            {/* Forward CTA */}
-            {onGoToCards && (
-              <button
-                onClick={onGoToCards}
-                className="flex items-center gap-1.5 border-2 border-black dark:border-brand-primary px-4 py-1.5 text-[11px] font-black uppercase tracking-widest text-brand-text hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all whitespace-nowrap"
-                style={{ backgroundColor: '#6EE7B7', boxShadow: '2px 2px 0 #000', borderRadius: 1 }}
-                title="Go to Card Studio"
-              >
-                Card Studio →
-              </button>
-            )}
 
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
@@ -550,9 +527,21 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
           </div>
         </div>
 
-        {/* ── Studio identity band ───────────────────────────────────────── */}
-        <div className="h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FFE500' }}>
-          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none">— Image Studio —</span>
+        {/* ── Studio navigation band ────────────────────────────────────── */}
+        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FFE500' }}>
+          <div className="flex-1 flex items-center pl-4">
+            <button onClick={onBack} className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest hover:bg-black/15 active:bg-black/25 transition-colors" style={{ borderRadius: 1 }}>
+              ← Concept Studio
+            </button>
+          </div>
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Image Studio —</span>
+          <div className="flex-1 flex items-center justify-end pr-4">
+            {onGoToCards && (
+              <button onClick={onGoToCards} className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest hover:bg-black/15 active:bg-black/25 transition-colors" style={{ borderRadius: 1 }}>
+                Card Studio →
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

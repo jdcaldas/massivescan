@@ -394,17 +394,6 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
       <header className="bg-brand-surface border-b-2 border-black dark:border-brand-primary sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-3">
 
-          {/* Back arrow */}
-          <button
-            onClick={onBack}
-            className="p-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0"
-            title="Back to Card Studio"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-          </button>
-
           {/* Project badge */}
           {projectName && (
             <div
@@ -455,9 +444,19 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
           </div>
         </div>
 
-        {/* ── Studio identity band ───────────────────────────────────────── */}
-        <div className="h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#C8B6FF' }}>
-          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none">— Deck Fusion —</span>
+        {/* ── Studio navigation band ────────────────────────────────────── */}
+        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#C8B6FF' }}>
+          <div className="flex-1 flex items-center pl-4">
+            <button
+              onClick={onBack}
+              className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest text-black hover:bg-black/15 active:bg-black/25 transition-colors"
+              style={{ borderRadius: 1 }}
+            >
+              ← Card Studio
+            </button>
+          </div>
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Deck Fusion —</span>
+          <div className="flex-1" />
         </div>
       </header>
 

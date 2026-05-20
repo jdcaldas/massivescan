@@ -472,12 +472,6 @@ const CardStudio: React.FC<CardStudioProps> = ({
       <header className="bg-brand-surface border-b-2 border-black dark:border-brand-primary sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-3">
 
-          <button onClick={onBack} className="p-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0" title="Back to Image Studio">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-          </button>
-
           {projectName && (
             <div className="flex-shrink-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-brand-primary bg-brand-secondary dark:bg-brand-primary text-brand-text" style={{ borderRadius: 1 }}>
               {projectName}
@@ -492,16 +486,6 @@ const CardStudio: React.FC<CardStudioProps> = ({
           </div>
 
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-            {onGoToFusion && (
-              <button
-                onClick={onGoToFusion}
-                className="flex items-center gap-1.5 border-2 border-black dark:border-brand-primary px-4 py-1.5 text-[11px] font-black uppercase tracking-widest hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all whitespace-nowrap"
-                style={{ backgroundColor: '#FFE500', color: '#1A1A1A', boxShadow: '2px 2px 0 #000', borderRadius: 1 }}
-                title="Go to Deck Fusion"
-              >
-                Deck Fusion →
-              </button>
-            )}
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded text-brand-subtle hover:text-brand-text hover:bg-brand-bg transition-colors" title={isDarkMode ? 'Light mode' : 'Dark mode'}>
               {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
             </button>
@@ -519,9 +503,29 @@ const CardStudio: React.FC<CardStudioProps> = ({
           </div>
         </div>
 
-        {/* ── Studio identity band ───────────────────────────────────────── */}
-        <div className="h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FF4F6D' }}>
-          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white select-none">— Card Studio —</span>
+        {/* ── Studio navigation band ────────────────────────────────────── */}
+        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FF4F6D' }}>
+          <div className="flex-1 flex items-center pl-4">
+            <button
+              onClick={onBack}
+              className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest text-black hover:bg-black/15 active:bg-black/25 transition-colors"
+              style={{ borderRadius: 1 }}
+            >
+              ← Image Studio
+            </button>
+          </div>
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Card Studio —</span>
+          <div className="flex-1 flex items-center justify-end pr-4">
+            {onGoToFusion && (
+              <button
+                onClick={onGoToFusion}
+                className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest text-black hover:bg-black/15 active:bg-black/25 transition-colors"
+                style={{ borderRadius: 1 }}
+              >
+                Deck Fusion →
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

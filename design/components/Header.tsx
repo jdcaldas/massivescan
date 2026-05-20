@@ -336,9 +336,22 @@ const Header: React.FC<HeaderProps> = ({
 
       </div>
 
-      {/* ── Studio identity band — full width ─────────────────────────────── */}
-      <div className="h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#6EE7B7' }}>
-        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none">— Concept Studio —</span>
+      {/* ── Studio navigation band — full width ───────────────────────────── */}
+      <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#6EE7B7' }}>
+        <div className="flex-1" />
+        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Concept Studio —</span>
+        <div className="flex-1 flex items-center justify-end pr-4">
+          {onGoToImages && canExport && (
+            <button
+              onClick={onGoToImages}
+              disabled={isGenerating}
+              className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest text-black hover:bg-black/15 active:bg-black/25 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{ borderRadius: 1 }}
+            >
+              Image Studio →
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );
