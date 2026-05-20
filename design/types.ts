@@ -46,6 +46,8 @@ export interface Group {
   isSubgroupsLoading?: boolean;
   /** Deck Fusion mapping key (e.g. "Grupo A", "Grupo Power-ups") */
   groupType?: string;
+  /** Card Studio: show a coloured border on the back of cards in this group */
+  backColoredBorder?: boolean;
 }
 
 export interface DesignStructure {
