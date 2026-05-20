@@ -168,66 +168,153 @@ const GroupStatusBadges: React.FC<{ group: Group; color: string }> = ({ group, c
   );
 };
 
+// ── Per-element position rows ─────────────────────────────────────────────────
+
+const CORNER_OPTIONS = [
+  { value: 'none', label: '—' },
+  { value: 'TL',   label: 'TL' },
+  { value: 'TR',   label: 'TR' },
+  { value: 'BL',   label: 'BL' },
+  { value: 'BR',   label: 'BR' },
+] as const;
+
+const ELEM_ROWS: { field: keyof ImageScenario; label: string; meta: { bg: string; fg: string; label: string } }[] = [
+  { field: 'qrCodePosition',   label: 'QR Code', meta: ELEM_META.qrCodePosition   },
+  { field: 'number_Position',  label: 'Number',  meta: ELEM_META.number_Position  },
+  { field: 'boxColorPosition', label: 'Colour',  meta: ELEM_META.boxColorPosition },
+  { field: 'letter_Position',  label: 'Letter',  meta: ELEM_META.letter_Position  },
+];
+
 // ── FRONT config panel ────────────────────────────────────────────────────────
 
 interface FrontConfigProps {
   group: Group;
   color: string;
   onApplyPreset: (id: string) => void;
+  onSetPosition: (field: keyof ImageScenario, value: string) => void;
   onClear: () => void;
 }
 
-const FrontConfig: React.FC<FrontConfigProps> = ({ group, color, onApplyPreset, onClear }) => {
+const FrontConfig: React.FC<FrontConfigProps> = ({ group, color, onApplyPreset, onSetPosition, onClear }) => {
   const scenario = (group.imagePrompts[0] ?? {}) as ImageScenario;
   const activePreset = detectPreset(scenario);
 
   return (
     <div className="flex gap-5 items-start">
-      {/* Mini preview */}
+      {/* Mini preview — live */}
       <div className="flex-shrink-0">
         <div className="text-[8px] font-black uppercase tracking-widest text-brand-subtle mb-1.5">Preview</div>
         <MiniCardFront scenario={scenario} color={color} />
       </div>
 
-      {/* Preset list */}
-      <div className="flex-1 min-w-0">
-        <div className="text-[8px] font-black uppercase tracking-widest text-brand-subtle mb-2">Layout Preset</div>
-        <div className="flex flex-col gap-1">
-          {PRESETS.map(pr => {
-            const isActive = activePreset === pr.id;
-            return (
-              <button
-                key={pr.id}
-                onClick={() => onApplyPreset(pr.id)}
-                className="flex items-center gap-3 px-3 py-2 border-2 text-left transition-all hover:opacity-90 active:translate-x-px active:translate-y-px"
-                style={{
-                  borderColor: isActive ? '#000' : 'rgba(0,0,0,0.12)',
-                  backgroundColor: isActive ? color : 'transparent',
-                  borderRadius: 1,
-                  boxShadow: isActive ? '2px 2px 0 #000' : 'none',
-                }}
-              >
-                <span className="text-[10px] font-black uppercase tracking-widest text-brand-text w-24 flex-shrink-0">{pr.label}</span>
-                <span className="text-[9px] text-brand-subtle">{pr.desc}</span>
-              </button>
-            );
-          })}
+      <div className="flex-1 min-w-0 space-y-4">
+        {/* Quick presets */}
+        <div>
+          <div className="text-[8px] font-black uppercase tracking-widest text-brand-subtle mb-1.5">Quick Preset</div>
+          <div className="flex gap-1 flex-wrap">
+            {PRESETS.map(pr => {
+              const isActive = activePreset === pr.id;
+              return (
+                <button
+                  key={pr.id}
+                  onClick={() => onApplyPreset(pr.id)}
+                  title={pr.desc}
+                  className="px-2.5 py-1 border-2 text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-90 active:translate-x-px active:translate-y-px whitespace-nowrap"
+                  style={{
+                    borderColor: isActive ? '#000' : 'rgba(0,0,0,0.15)',
+                    backgroundColor: isActive ? color : 'transparent',
+                    color: '#1A1A1A',
+                    borderRadius: 1,
+                    boxShadow: isActive ? '2px 2px 0 #000' : 'none',
+                  }}
+                >{pr.label}</button>
+              );
+            })}
+            {activePreset === 'custom' && (
+              <span className="px-2.5 py-1 border-2 border-black/20 text-[9px] font-black uppercase tracking-widest text-brand-subtle" style={{ borderRadius: 1 }}>Custom</span>
+            )}
+            <button
+              onClick={onClear}
+              disabled={!activePreset}
+              className="px-2.5 py-1 border-2 border-black/15 text-[9px] font-black uppercase tracking-widest text-brand-subtle hover:border-black hover:text-brand-text transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+              style={{ borderRadius: 1 }}
+            >✕ Clear</button>
+          </div>
+        </div>
 
-          {activePreset === 'custom' && (
-            <div className="flex items-center gap-3 px-3 py-2 border-2 border-black/20"
-              style={{ borderRadius: 1, backgroundColor: 'rgba(255,79,109,0.08)' }}
-            >
-              <span className="text-[10px] font-black uppercase tracking-widest text-brand-text w-24 flex-shrink-0">Custom</span>
-              <span className="text-[9px] text-brand-subtle">Mixed or manually set positions</span>
-            </div>
-          )}
+        {/* Per-element position picker */}
+        <div>
+          <div className="text-[8px] font-black uppercase tracking-widest text-brand-subtle mb-1.5">Element Positions</div>
+          <div className="space-y-1">
+            {ELEM_ROWS.map(({ field, label, meta }) => {
+              const current = (scenario[field] as string) || 'none';
+              return (
+                <div key={field} className="flex items-center gap-2">
+                  {/* Element badge */}
+                  <span
+                    className="flex-shrink-0 flex items-center justify-center text-[8px] font-black border border-black/30"
+                    style={{ width: 20, height: 20, backgroundColor: meta.bg, color: meta.fg, borderRadius: 1 }}
+                  >{meta.label}</span>
+                  <span className="text-[9px] font-black text-brand-subtle w-12 flex-shrink-0">{label}</span>
+                  {/* Position buttons */}
+                  <div className="flex gap-0.5">
+                    {CORNER_OPTIONS.map(opt => {
+                      const isSelected = current === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => onSetPosition(field, opt.value)}
+                          className="flex items-center justify-center text-[8px] font-black border transition-all"
+                          style={{
+                            width: 24, height: 20,
+                            borderColor: isSelected ? '#000' : 'rgba(0,0,0,0.15)',
+                            backgroundColor: isSelected && opt.value !== 'none' ? meta.bg : isSelected ? '#e5e5e5' : 'transparent',
+                            color: isSelected && opt.value !== 'none' ? meta.fg : '#1A1A1A',
+                            borderRadius: 1,
+                            boxShadow: isSelected ? '1px 1px 0 #000' : 'none',
+                          }}
+                        >{opt.label}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
 
-          <button
-            onClick={onClear}
-            disabled={!activePreset}
-            className="px-3 py-1.5 mt-1 text-[9px] font-black uppercase tracking-widest border-2 border-black/15 text-brand-subtle hover:border-black hover:text-brand-text transition-colors disabled:opacity-25 disabled:cursor-not-allowed text-left"
-            style={{ borderRadius: 1 }}
-          >✕ Clear all positions</button>
+            {/* Power bar row (on / off only) */}
+            {(() => {
+              const isOn = scenario.powerPosition === 'center';
+              return (
+                <div className="flex items-center gap-2">
+                  <span
+                    className="flex-shrink-0 flex items-center justify-center text-[8px] font-black border border-black/30"
+                    style={{ width: 20, height: 20, backgroundColor: '#FFE500', color: '#1A1A1A', borderRadius: 1 }}
+                  >⚡</span>
+                  <span className="text-[9px] font-black text-brand-subtle w-12 flex-shrink-0">Power</span>
+                  <div className="flex gap-0.5">
+                    {[{ value: 'none', label: 'Off' }, { value: 'center', label: 'On' }].map(opt => {
+                      const isSelected = (scenario.powerPosition || 'none') === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => onSetPosition('powerPosition', opt.value)}
+                          className="flex items-center justify-center text-[8px] font-black border transition-all px-2"
+                          style={{
+                            height: 20,
+                            borderColor: isSelected ? '#000' : 'rgba(0,0,0,0.15)',
+                            backgroundColor: isSelected && opt.value !== 'none' ? '#FFE500' : isSelected ? '#e5e5e5' : 'transparent',
+                            color: '#1A1A1A',
+                            borderRadius: 1,
+                            boxShadow: isSelected ? '1px 1px 0 #000' : 'none',
+                          }}
+                        >{opt.label}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       </div>
     </div>
@@ -360,6 +447,15 @@ const CardStudio: React.FC<CardStudioProps> = ({
     applyAndSave(s);
   }, [structure, applyAndSave]);
 
+  // Set a single position field on all imagePrompts in the group
+  const setGroupPosition = useCallback((gi: number, field: keyof ImageScenario, value: string) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structure));
+    const apply = (p: ImageScenario) => { (p as Record<string, unknown>)[field as string] = value; };
+    s.groups[gi].imagePrompts.forEach(apply);
+    s.groups[gi].subgroups.forEach(sg => sg.imagePrompts.forEach(apply));
+    applyAndSave(s);
+  }, [structure, applyAndSave]);
+
   // Toggle colored border on the back of the group's cards
   const toggleBackBorder = useCallback((gi: number, value: boolean) => {
     const s: DesignStructure = JSON.parse(JSON.stringify(structure));
@@ -489,6 +585,7 @@ const CardStudio: React.FC<CardStudioProps> = ({
                           group={group}
                           color={color}
                           onApplyPreset={id => applyPreset(gi, id)}
+                          onSetPosition={(field, value) => setGroupPosition(gi, field, value)}
                           onClear={() => clearGroup(gi)}
                         />
                       </div>
