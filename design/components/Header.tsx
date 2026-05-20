@@ -197,6 +197,11 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
+        {/* ── Studio identity band ───────────────────────────────────────── */}
+        <div className="-mx-6 h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#6EE7B7' }}>
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none">— Concept Studio —</span>
+        </div>
+
         {/* Collapsible section */}
         <div className={`overflow-hidden transition-all duration-200 ease-in-out ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-80 opacity-100'}`}>
           <div className="pb-5">

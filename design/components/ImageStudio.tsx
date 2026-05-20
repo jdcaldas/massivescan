@@ -549,10 +549,15 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
             </div>
           </div>
         </div>
+
+        {/* ── Studio identity band ───────────────────────────────────────── */}
+        <div className="h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FFE500' }}>
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none">— Image Studio —</span>
+        </div>
       </header>
 
       {/* ── Controls bar ────────────────────────────────────────────────── */}
-      <div className="bg-brand-surface border-b-2 border-black dark:border-brand-primary sticky top-16 z-10">
+      <div className="bg-brand-surface border-b-2 border-black dark:border-brand-primary sticky top-24 z-10">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-4 justify-between flex-wrap">
 
           {/* LEFT — style + model + progress */}

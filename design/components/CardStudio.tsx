@@ -518,6 +518,11 @@ const CardStudio: React.FC<CardStudioProps> = ({
             </div>
           </div>
         </div>
+
+        {/* ── Studio identity band ───────────────────────────────────────── */}
+        <div className="h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FF4F6D' }}>
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white select-none">— Card Studio —</span>
+        </div>
       </header>
 
       {/* ── Groups ────────────────────────────────────────────────────────── */}
