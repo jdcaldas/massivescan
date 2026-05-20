@@ -17,6 +17,7 @@ const CARD_COLORS = [
   '#C4B5FD', // 05: Power-ups (violet)
   '#4B5563', // 06: Utility (charcoal)
 ];
+const CARD_COLOR_NAMES = ['Yellow', 'Green', 'Blue', 'Magenta', 'Power-ups', 'Utility'];
 
 /** Maps groupType → short technical label shown in brackets next to the creative title. */
 const GROUP_TYPE_LABEL: Record<string, string> = {
@@ -871,7 +872,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                   src={`data:image/jpeg;base64,${scenario.base64Image}`}
                                   alt=""
                                   className="w-full h-full object-cover cursor-zoom-in"
-                                  onClick={() => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `${group.title} · IMG ${pi + 1}` })}
+                                  onClick={() => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `Card Cover · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${group.title}` })}
                                 />
                               ) : genStates[key] === 'generating' ? (
                                 <div className="absolute inset-0 flex items-center justify-center bg-brand-bg">
@@ -952,7 +953,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                       src={`data:image/jpeg;base64,${imgS.base64Image}`}
                                       alt=""
                                       className="w-full h-full object-cover cursor-zoom-in"
-                                      onClick={() => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `${group.title} · ${sg.title} · SG${si + 1}·${pi + 1}` })}
+                                      onClick={() => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `Card Front · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${sg.title}` })}
                                     />
                                   ) : genStates[key] === 'generating' ? (
                                     <div className="absolute inset-0 flex items-center justify-center bg-brand-bg">
@@ -1084,7 +1085,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                           isFavorite={group.favoriteImagePromptIndex === pi}
                           onGenerate={(extra) => generateGroupImage(gi, pi, extra)}
                           onFavorite={() => toggleGroupFavorite(gi, pi)}
-                          onZoom={scenario.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `${group.title} · IMG ${pi + 1}` }) : undefined}
+                          onZoom={scenario.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `Card Cover · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${group.title}` }) : undefined}
                           aspectRatio={selectedFormat.replace(':', '/')}
                         />
                       );
@@ -1167,7 +1168,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                         isFavorite={sg.favoriteImagePromptIndex === pi}
                                         onGenerate={(extra) => generateSubgroupImage(gi, si, pi, extra)}
                                         onFavorite={() => toggleSubFavorite(gi, si, pi)}
-                                        onZoom={imgS.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `${group.title} · ${sg.title} · SG${si + 1}·${pi + 1}` }) : undefined}
+                                        onZoom={imgS.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `Card Front · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${sg.title}` }) : undefined}
                                         size="small"
                                         aspectRatio={selectedFormat.replace(':', '/')}
                                       />
