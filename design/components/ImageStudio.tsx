@@ -103,6 +103,7 @@ const ImageSlot: React.FC<ImageSlotProps> = ({
               {isSmall ? 'Gen' : 'Generate'}
             </button>
           </div>
+        )}
         {isFavorite && (
           <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 border-2 border-black text-[8px] font-black uppercase tracking-widest text-black" style={{ backgroundColor: '#fbbf24', borderRadius: 1 }}>
             <StarIcon isFilled className="w-2.5 h-2.5" />
