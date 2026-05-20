@@ -4,7 +4,7 @@ import { mergeDecks, GROUP_TYPE_OPTIONS, COLOR_TO_GROUP_TYPE } from '../services
 import { listDecks, loadDeck, saveDeck, type DeckFileMeta } from '../services/fileArchiveService';
 import { SunIcon, MoonIcon, SettingsIcon, ChartBarIcon } from './icons';
 import UsageDashboard from './UsageDashboard';
-import { DECK_TYPE_META, FALLBACK_TYPE_META } from '../../cards/deckTypeMeta';
+import { DECK_TYPE_META, FALLBACK_TYPE_META, TIER_META } from '../../cards/deckTypeMeta';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -69,26 +69,72 @@ const PosBadges: React.FC<{ scenario: DeckFusionProps['designStructure']['groups
 
 interface GroupedCard { front: MergedQRCode; back?: MergedQRCode }
 
+// Filter tab definitions — colour-coded per tier / group
+const PREVIEW_FILTERS: { key: string; label: string; bg: string; fg: string }[] = [
+  { key: 'all',     label: 'All',       bg: '#1A1A1A', fg: '#FFFFFF' },
+  { key: 'yellow',  label: 'Yellow',    bg: '#FDE68A', fg: '#1A1A1A' },
+  { key: 'green',   label: 'Green',     bg: '#86EFAC', fg: '#1A1A1A' },
+  { key: 'blue',    label: 'Blue',      bg: '#7DD3FC', fg: '#1A1A1A' },
+  { key: 'magenta', label: 'Magenta',   bg: '#F0ABFC', fg: '#1A1A1A' },
+  { key: 'powerup', label: 'Power-ups', bg: '#C4B5FD', fg: '#1A1A1A' },
+  { key: 'utility', label: 'Utility',   bg: '#4B5563', fg: '#FFFFFF' },
+];
+
+const GAME_CARD_TYPES = new Set(['game_card']);
+const POWERUP_TYPES   = new Set(['power_up']);
+const UTILITY_TYPES   = new Set(['promo_video', 'sponsor', 'instructions', 'game_activator']);
+
+const cardMatchesFilter = (card: GroupedCard, filter: string): boolean => {
+  if (filter === 'all') return true;
+  const col  = (card.front.color ?? card.front.card_color ?? '').toLowerCase();
+  const type = card.front.type;
+  if (filter === 'yellow'  || filter === 'green' || filter === 'blue' || filter === 'magenta')
+    return GAME_CARD_TYPES.has(type) && col === filter;
+  if (filter === 'powerup') return POWERUP_TYPES.has(type);
+  if (filter === 'utility') return UTILITY_TYPES.has(type);
+  return true;
+};
+
 const CardPreviewModal: React.FC<{ deck: MergedDeck; theme: string; onClose: () => void }> = ({ deck, theme, onClose }) => {
   const [cards, setCards] = useState<GroupedCard[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
 
   useEffect(() => {
-    const map = new Map<string, Partial<GroupedCard>>();
+    // Back cards are separate entries with type 'game_card_back', one per color tier.
+    // Build a lookup: color → back QR so we can attach the right back to every front.
+    const backByColor = new Map<string, MergedQRCode>();
     deck.qrcodes.forEach(qr => {
-      const isBack = qr.id.endsWith('-back');
-      const base = isBack ? qr.id.replace('-back', '') : qr.id;
-      if (!map.has(base)) map.set(base, {});
-      const e = map.get(base)!;
-      if (isBack) e.back = qr; else e.front = qr;
+      if (qr.type === 'game_card_back') {
+        const col = (qr.color ?? qr.card_color ?? '').toLowerCase();
+        if (col) backByColor.set(col, qr);
+      }
     });
-    const sorted = Array.from(map.values())
-      .filter((c): c is GroupedCard => !!c.front)
-      .sort((a, b) => {
-        const nA = a.front.number ?? Infinity;
-        const nB = b.front.number ?? Infinity;
-        return nA !== nB ? nA - nB : a.front.id.localeCompare(b.front.id);
+
+    const fronts: GroupedCard[] = deck.qrcodes
+      .filter(qr => qr.type !== 'game_card_back')
+      .map(qr => {
+        // Resolve the back lookup key:
+        //  • game_card  → use the card's color (yellow/green/blue/magenta)
+        //  • power_up   → use synthetic key '__powerup'
+        //  • utility    → use synthetic key '__utility'
+        let backKey: string;
+        if (qr.type === 'game_card') {
+          backKey = (qr.color ?? qr.card_color ?? '').toLowerCase();
+        } else if (qr.type === 'power_up') {
+          backKey = '__powerup';
+        } else {
+          backKey = '__utility';
+        }
+        return { front: qr, back: backByColor.get(backKey) };
       });
-    setCards(sorted);
+
+    fronts.sort((a, b) => {
+      const nA = a.front.number ?? Infinity;
+      const nB = b.front.number ?? Infinity;
+      return nA !== nB ? nA - nB : a.front.id.localeCompare(b.front.id);
+    });
+
+    setCards(fronts);
   }, [deck]);
 
   useEffect(() => {
@@ -167,48 +213,99 @@ const CardPreviewModal: React.FC<{ deck: MergedDeck; theme: string; onClose: () 
   };
 
   const matched = deck.qrcodes.filter(q => q.gdesign_data).length;
+  const visibleCards = cards.filter(c => cardMatchesFilter(c, activeFilter));
+
+  // Only show filter tabs that have at least one card
+  const availableFilters = PREVIEW_FILTERS.filter(f => {
+    if (f.key === 'all') return true;
+    return cards.some(c => cardMatchesFilter(c, f.key));
+  });
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col" onClick={onClose}>
       {/* Modal chrome */}
       <div
-        className="bg-brand-surface border-b-2 border-black flex items-center justify-between px-5 h-14 flex-shrink-0"
+        className="bg-brand-surface border-b-2 border-black flex-shrink-0"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-black uppercase tracking-widest text-brand-text">Preview</span>
-          <span className="text-xs font-black text-brand-subtle truncate max-w-[240px]">{theme}</span>
-          <div
-            className="px-2 py-px text-[9px] font-black uppercase tracking-widest border-2 border-black"
-            style={{ backgroundColor: '#6EE7B7', color: '#1A1A1A', borderRadius: 1 }}
-          >
-            {matched}/{deck.qrcodes.length} matched
+        {/* Top row */}
+        <div className="flex items-center justify-between px-5 h-14">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-black uppercase tracking-widest text-brand-text">Preview</span>
+            <span className="text-xs font-black text-brand-subtle truncate max-w-[240px]">{theme}</span>
+            <div
+              className="px-2 py-px text-[9px] font-black uppercase tracking-widest border-2 border-black"
+              style={{ backgroundColor: '#6EE7B7', color: '#1A1A1A', borderRadius: 1 }}
+            >
+              {matched}/{deck.qrcodes.length} matched
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center border-2 border-black bg-brand-text text-brand-surface font-black text-sm hover:opacity-80 transition-opacity"
+            style={{ boxShadow: '2px 2px 0 #555', borderRadius: 1 }}
+          >✕</button>
         </div>
-        <button
-          onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center border-2 border-black bg-brand-text text-brand-surface font-black text-sm hover:opacity-80 transition-opacity"
-          style={{ boxShadow: '2px 2px 0 #555', borderRadius: 1 }}
-        >✕</button>
+        {/* Filter bar */}
+        <div className="flex items-center gap-1.5 px-5 pb-3 flex-wrap">
+          {availableFilters.map(f => {
+            const isActive = activeFilter === f.key;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setActiveFilter(f.key)}
+                className="px-3 py-1 text-[10px] font-black uppercase tracking-widest border-2 border-black transition-all"
+                style={{
+                  backgroundColor: isActive ? f.bg : 'transparent',
+                  color: isActive ? f.fg : undefined,
+                  boxShadow: isActive ? '2px 2px 0 #000' : 'none',
+                  borderRadius: 1,
+                  opacity: isActive ? 1 : 0.45,
+                }}
+              >
+                {f.label}
+                {f.key !== 'all' && (
+                  <span className="ml-1 opacity-60">
+                    {cards.filter(c => cardMatchesFilter(c, f.key)).length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
         <div className="max-w-5xl mx-auto space-y-4">
-          {cards.map(card => (
+          {visibleCards.map(card => (
             <div
               key={card.front.id}
               className="bg-brand-surface border-2 border-black"
               style={{ boxShadow: '4px 4px 0 #000', borderRadius: 1 }}
             >
               {/* Card header */}
-              <div className="flex items-center gap-3 px-4 py-2.5 border-b-2 border-black bg-brand-bg">
-                <span className="text-[9px] font-black uppercase tracking-widest text-brand-subtle">Card</span>
-                <span className="text-sm font-black text-brand-text">
-                  #{card.front.number ?? 'N/A'}
-                </span>
-                <span className="text-[9px] font-mono text-brand-subtle/50">{card.front.id}</span>
-              </div>
+              {(() => {
+                const tierKey = (card.front.color ?? card.front.card_color ?? '').toLowerCase() as keyof typeof TIER_META;
+                const tier = TIER_META[tierKey];
+                return (
+                  <div
+                    className="flex items-center gap-3 px-4 py-2.5 border-b-2 border-black"
+                    style={tier ? { backgroundColor: tier.bg, color: tier.fg } : {}}
+                  >
+                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Card</span>
+                    <span className="text-sm font-black">
+                      #{card.front.number ?? 'N/A'}
+                    </span>
+                    <span className="text-[9px] font-mono opacity-40">{card.front.id}</span>
+                    {tier && (
+                      <span className="ml-auto text-[8px] font-black uppercase tracking-widest opacity-60">
+                        {tierKey}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
               {/* Front + Back */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-black">
                 <div className="bg-brand-surface p-4">{renderSide(card.front, 'Front')}</div>

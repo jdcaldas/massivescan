@@ -194,6 +194,71 @@ export const mergeDecks = (
     return { ...qr, gdesign_data };
   });
 
+  // ── Synthesize game_card_back entries for groups missing them ────────────
+  // Some deck configs are generated without explicit back cards. For every
+  // group that has front cards in the deck, inject a synthetic back using
+  // the group's cover image (favoriteImagePromptIndex).
+  //
+  // We use a stable synthetic `color` key so the preview modal can look up
+  // the back by a consistent value:
+  //   game_card tiers  → color = 'yellow' / 'green' / 'blue' / 'magenta'
+  //   power_up cards   → color = '__powerup'
+  //   utility cards    → color = '__utility'
+
+  const existingBackColors = new Set(
+    qrcodes
+      .filter(q => q.type === 'game_card_back')
+      .map(q => (q.color ?? q.card_color ?? '').toLowerCase())
+  );
+
+  // ── Color tiers ──────────────────────────────────────────────────────────
+  for (const [color, groupType] of Object.entries(COLOR_TO_GROUP_TYPE)) {
+    if (existingBackColors.has(color)) continue;
+    const hasFronts = qrcodes.some(
+      q => q.type === 'game_card' && (q.color ?? q.card_color ?? '').toLowerCase() === color
+    );
+    if (!hasFronts) continue;
+    const group = byType.get(groupType);
+    if (!group) continue;
+    const scenario = selectScenario(group);
+    if (!scenario) { log.push(`Warning: No cover image for synthetic back of ${color}`); continue; }
+    qrcodes.push({
+      id: `__synthetic_back_${color}`,
+      pathId: '', key: '', type: 'game_card_back', stars: 0, color,
+      gdesign_data: { title: group.title, description: group.description, mood: group.mood, visual_config: scenario },
+    });
+    log.push(`Synthesized game_card_back for ${color} tier from group "${group.title}"`);
+  }
+
+  // ── Power-ups ─────────────────────────────────────────────────────────────
+  if (!existingBackColors.has('__powerup') && qrcodes.some(q => q.type === 'power_up')) {
+    const group = byType.get('Grupo Power-ups');
+    const scenario = group ? selectScenario(group) : null;
+    if (group && scenario) {
+      qrcodes.push({
+        id: '__synthetic_back___powerup',
+        pathId: '', key: '', type: 'game_card_back', stars: 0, color: '__powerup',
+        gdesign_data: { title: group.title, description: group.description, mood: group.mood, visual_config: scenario },
+      });
+      log.push(`Synthesized game_card_back for power-ups from group "${group.title}"`);
+    }
+  }
+
+  // ── Utility ───────────────────────────────────────────────────────────────
+  const utilityTypes = new Set(['promo_video', 'sponsor', 'instructions', 'game_activator']);
+  if (!existingBackColors.has('__utility') && qrcodes.some(q => utilityTypes.has(q.type))) {
+    const group = byType.get('Grupo Extra/Utilitários');
+    const scenario = group ? selectScenario(group) : null;
+    if (group && scenario) {
+      qrcodes.push({
+        id: '__synthetic_back___utility',
+        pathId: '', key: '', type: 'game_card_back', stars: 0, color: '__utility',
+        gdesign_data: { title: group.title, description: group.description, mood: group.mood, visual_config: scenario },
+      });
+      log.push(`Synthesized game_card_back for utility from group "${group.title}"`);
+    }
+  }
+
   log.unshift(`Processed ${qrcodes.length} cards.`);
 
   return {
