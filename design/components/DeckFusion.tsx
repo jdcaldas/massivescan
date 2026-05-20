@@ -101,7 +101,7 @@ const CardPreviewModal: React.FC<{ deck: MergedDeck; theme: string; onClose: () 
     if (!qr) return (
       <div className="flex flex-col gap-2">
         <div className="text-[10px] font-black uppercase tracking-widest text-brand-subtle">{label}</div>
-        <div className="border-2 border-black/20 flex items-center justify-center h-40 bg-brand-bg">
+        <div className="border-2 border-black/20 flex items-center justify-center aspect-[3/4] bg-brand-bg">
           <span className="text-xs text-brand-subtle/40 font-black uppercase">No data</span>
         </div>
       </div>
@@ -128,11 +128,11 @@ const CardPreviewModal: React.FC<{ deck: MergedDeck; theme: string; onClose: () 
           <img
             src={`data:image/jpeg;base64,${qr.gdesign_data.visual_config.base64Image}`}
             alt={qr.gdesign_data.title}
-            className="w-full object-cover border-2 border-black"
-            style={{ maxHeight: 200, borderRadius: 1 }}
+            className="w-full border-2 border-black"
+            style={{ borderRadius: 1, display: 'block' }}
           />
         ) : (
-          <div className="border-2 border-black/20 flex items-center justify-center h-40 bg-brand-bg">
+          <div className="border-2 border-black/20 flex items-center justify-center aspect-[3/4] bg-brand-bg">
             <span className="text-[9px] text-brand-subtle/40 font-black uppercase">No image</span>
           </div>
         )}
