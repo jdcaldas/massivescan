@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { UploadIcon, DownloadIcon, TrashIcon, SparklesIcon, ChevronUpIcon, ChevronDownIcon, HelpIcon, SunIcon, MoonIcon, SaveIcon, TranslateIcon, SettingsIcon, ImageIcon, ChartBarIcon } from './icons';
+import { UploadIcon, DownloadIcon, TrashIcon, SparklesIcon, ChevronUpIcon, ChevronDownIcon, HelpIcon, SunIcon, MoonIcon, SaveIcon, TranslateIcon, SettingsIcon, ChartBarIcon } from './icons';
 import type { ApiStats, DesignStructure } from '../types';
 import EditableText from './EditableText';
 
@@ -101,54 +101,57 @@ const Header: React.FC<HeaderProps> = ({
 
         {/* Top bar */}
         <div className="flex justify-between items-center h-16">
+          {/* Left zone */}
           <div className="flex items-center gap-3">
-            {/* Back to worlds */}
+            {/* Back to concepts (arrow only) */}
             <button
               onClick={onBackToHome}
-              className="flex items-center gap-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0"
-              title="Back to Worlds"
+              className="p-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0"
+              title="Back to Concepts"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
               </svg>
-              <span className="text-xs font-black uppercase tracking-widest">Concepts</span>
             </button>
 
             {/* Project badge */}
             {projectName && (
-              <>
-                <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg">/</span>
-                <div
-                  className="flex-shrink-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-brand-primary bg-brand-secondary dark:bg-brand-primary text-brand-text"
-                  style={{ borderRadius: 1 }}
-                  title={`Project: ${projectName}`}
-                >
-                  {projectName}
-                </div>
-              </>
+              <div
+                className="flex-shrink-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-brand-primary bg-brand-secondary dark:bg-brand-primary text-brand-text"
+                style={{ borderRadius: 1 }}
+                title={`Project: ${projectName}`}
+              >
+                {projectName}
+              </div>
             )}
 
-            <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg">/</span>
+            {/* Divider */}
+            <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg flex-shrink-0">|</span>
 
-            {/* Module identity */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div>
-                <div className="text-[9px] font-black uppercase tracking-widest text-brand-subtle leading-none">Massive Scan</div>
-                <div className="text-sm font-black uppercase tracking-tight leading-tight text-brand-text truncate max-w-[180px]" title={activeWorldName ?? 'Design System'}>
-                  {activeWorldName ?? 'Design System'}
-                </div>
+            {/* Studio identity */}
+            <div className="min-w-0">
+              <div className="text-[9px] font-black uppercase tracking-widest text-brand-primary leading-none">Concept Studio</div>
+              <div className="text-sm font-black uppercase tracking-tight leading-tight text-brand-text truncate max-w-[200px]" title={activeWorldName ?? theme ?? 'Design System'}>
+                {activeWorldName ?? theme ?? 'Design System'}
               </div>
             </div>
-
-            {isCollapsed && theme && !activeWorldName && (
-              <span className="neo-input text-xs text-brand-subtle px-2.5 py-1 bg-brand-bg">
-                {theme}
-              </span>
-            )}
           </div>
 
+          {/* Right zone */}
+          <div className="flex items-center flex-shrink-0 gap-2">
+            {/* Forward CTA — shown when there's content to advance */}
+            {onGoToImages && canExport && (
+              <button
+                onClick={onGoToImages}
+                disabled={isGenerating}
+                className="flex items-center gap-1.5 border-2 border-black dark:border-brand-primary px-4 py-1.5 text-[11px] font-black uppercase tracking-widest text-brand-text hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
+                style={{ backgroundColor: '#6EE7B7', boxShadow: '2px 2px 0 #000', borderRadius: 1 }}
+                title="Go to Image Studio"
+              >
+                Image Studio →
+              </button>
+            )}
 
-          <div className="flex items-center flex-shrink-0 gap-0.5">
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="p-2 rounded text-brand-subtle hover:text-brand-text hover:bg-brand-bg transition-colors"
@@ -310,32 +313,20 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
-            {/* Actions row */}
-            {onGoToImages && canExport && (
-              <div className="mt-3 flex items-center justify-between gap-4">
-                <button
-                  onClick={onGoToImages}
+            {/* Model selector row — shown when content is ready */}
+            {canExport && availableModels && onSelectModel && selectedModel && (
+              <div className="mt-3 flex items-center gap-4">
+                <select
+                  value={selectedModel}
+                  onChange={e => onSelectModel(e.target.value)}
                   disabled={isGenerating}
-                  className="flex items-center gap-3 border-2 border-black px-6 py-2.5 text-sm font-black uppercase tracking-widest text-brand-text hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#6EE7B7', boxShadow: '4px 4px 0 #000', borderRadius: 1 }}
+                  className="neo-input bg-brand-bg text-xs font-black text-brand-text outline-none cursor-pointer px-3 py-2.5 flex-shrink-0 disabled:opacity-40"
+                  title="AI Model"
                 >
-                  <ImageIcon className="w-4 h-4" />
-                  Advance for Design →
-                </button>
-
-                {availableModels && onSelectModel && selectedModel && (
-                  <select
-                    value={selectedModel}
-                    onChange={e => onSelectModel(e.target.value)}
-                    disabled={isGenerating}
-                    className="neo-input bg-brand-bg text-xs font-black text-brand-text outline-none cursor-pointer px-3 py-2.5 flex-shrink-0 disabled:opacity-40"
-                    title="AI Model"
-                  >
-                    {availableModels.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                )}
+                  {availableModels.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
               </div>
             )}
 

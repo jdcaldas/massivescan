@@ -50,7 +50,15 @@ const POS_COLORS: Record<string, { bg: string; fg: string; label: string }> = {
   letter_Position:  { bg: '#FF4F6D', fg: '#fff',    label: 'L'  },
 };
 
-const CARD_COLORS = ['#6EE7B7', '#93C5FD', '#FDE68A', '#FCA5A5', '#C4B5FD', '#F9A8D4', '#A5F3FC'];
+// Fixed deck tier sequence — matches GroupCard.tsx, ImageStudio.tsx and deckTypeMeta.ts
+const CARD_COLORS = [
+  '#FDE68A', // 01: Yellow tier
+  '#86EFAC', // 02: Green tier
+  '#7DD3FC', // 03: Blue tier
+  '#F0ABFC', // 04: Magenta tier
+  '#C4B5FD', // 05: Power-ups (violet)
+  '#4B5563', // 06: Utility (charcoal)
+];
 
 // ── Position badges overlay ───────────────────────────────────────────────────
 
@@ -326,38 +334,51 @@ const CardStudio: React.FC<CardStudioProps> = ({
       <header className="bg-brand-surface border-b-2 border-black dark:border-brand-primary sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-3">
 
-          {projectName && (
-            <>
-              <div
-                className="flex-shrink-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-brand-primary bg-brand-secondary dark:bg-brand-primary text-brand-text"
-                style={{ borderRadius: 1 }}
-              >{projectName}</div>
-              <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg">/</span>
-            </>
-          )}
-
+          {/* Back arrow */}
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0"
+            className="p-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0"
+            title="Back to Image Studio"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
             </svg>
-            <span className="text-xs font-black uppercase tracking-widest">Images</span>
           </button>
 
-          <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg">/</span>
+          {/* Project badge */}
+          {projectName && (
+            <div
+              className="flex-shrink-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-brand-primary bg-brand-secondary dark:bg-brand-primary text-brand-text"
+              style={{ borderRadius: 1 }}
+            >
+              {projectName}
+            </div>
+          )}
 
-          <span
-            className="text-xs font-black tracking-[0.12em] uppercase text-brand-subtle cursor-pointer hover:text-brand-text truncate max-w-[160px] transition-colors"
-            title={theme}
-          >{theme}</span>
+          {/* Divider */}
+          <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg flex-shrink-0">|</span>
 
-          <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg">/</span>
+          {/* Studio identity */}
+          <div className="min-w-0">
+            <div className="text-[9px] font-black uppercase tracking-widest text-brand-primary leading-none">Card Studio</div>
+            <div className="text-sm font-black uppercase tracking-tight leading-tight text-brand-text truncate max-w-[220px]" title={theme}>{theme}</div>
+          </div>
 
-          <span className="text-xs font-black tracking-widest uppercase text-brand-primary">Cards</span>
+          {/* Right zone */}
+          <div className="flex items-center gap-2 ml-auto flex-shrink-0">
 
-          <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
+            {/* Forward CTA */}
+            {onGoToFusion && (
+              <button
+                onClick={onGoToFusion}
+                className="flex items-center gap-1.5 border-2 border-black dark:border-brand-primary px-4 py-1.5 text-[11px] font-black uppercase tracking-widest hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all whitespace-nowrap"
+                style={{ backgroundColor: '#FFE500', color: '#1A1A1A', boxShadow: '2px 2px 0 #000', borderRadius: 1 }}
+                title="Go to Deck Fusion"
+              >
+                Deck Fusion →
+              </button>
+            )}
+
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded text-brand-subtle hover:text-brand-text hover:bg-brand-bg transition-colors" title={isDarkMode ? 'Light mode' : 'Dark mode'}>
               {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
             </button>
@@ -453,17 +474,6 @@ const CardStudio: React.FC<CardStudioProps> = ({
               {IMAGE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
 
-            {onGoToFusion && (
-              <button
-                onClick={onGoToFusion}
-                disabled={isAnyGenerating}
-                className="flex items-center gap-2 border-2 border-black px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
-                style={{ backgroundColor: '#FFE500', color: '#1A1A1A', boxShadow: '3px 3px 0 #000', borderRadius: 1 }}
-                title="Go to Deck Fusion module"
-              >
-                Fusion →
-              </button>
-            )}
           </div>
         </div>
       </div>

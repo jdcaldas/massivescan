@@ -394,41 +394,42 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
       <header className="bg-brand-surface border-b-2 border-black dark:border-brand-primary sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-3">
 
-          {projectName && (
-            <>
-              <div
-                className="flex-shrink-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-brand-primary bg-brand-secondary dark:bg-brand-primary text-brand-text"
-                style={{ borderRadius: 1 }}
-              >{projectName}</div>
-              <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg">/</span>
-            </>
-          )}
-
+          {/* Back arrow */}
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0"
+            className="p-1.5 text-brand-subtle hover:text-brand-text transition-colors group flex-shrink-0"
+            title="Back to Card Studio"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
             </svg>
-            <span className="text-xs font-black uppercase tracking-widest">Cards</span>
           </button>
 
-          <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg">/</span>
-          <span
-            className="text-xs font-black tracking-[0.12em] uppercase text-brand-subtle cursor-pointer hover:text-brand-text truncate max-w-[180px] transition-colors"
-            onClick={onBack}
-            title={theme}
-          >{theme}</span>
-          <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg">/</span>
-          <span className="text-xs font-black tracking-widest uppercase text-brand-primary dark:text-brand-primary">
-            Deck Fusion
-          </span>
+          {/* Project badge */}
+          {projectName && (
+            <div
+              className="flex-shrink-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-brand-primary bg-brand-secondary dark:bg-brand-primary text-brand-text"
+              style={{ borderRadius: 1 }}
+            >
+              {projectName}
+            </div>
+          )}
 
+          {/* Divider */}
+          <span className="text-black/20 dark:text-brand-primary/30 font-light text-lg flex-shrink-0">|</span>
+
+          {/* Studio identity */}
+          <div className="min-w-0">
+            <div className="text-[9px] font-black uppercase tracking-widest text-brand-primary leading-none">Deck Fusion</div>
+            <div className="text-sm font-black uppercase tracking-tight leading-tight text-brand-text truncate max-w-[220px]" title={theme}>{theme}</div>
+          </div>
+
+          {/* Right zone — utility icons (last in chain, no forward CTA) */}
           <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="p-2 rounded text-brand-subtle hover:text-brand-text hover:bg-brand-bg transition-colors"
+              title={isDarkMode ? 'Light mode' : 'Dark mode'}
             >
               {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
             </button>
@@ -442,6 +443,7 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
             <button
               onClick={onOpenSettings}
               className="p-2 rounded text-brand-subtle hover:text-brand-text hover:bg-brand-bg transition-colors"
+              title="Settings"
             >
               <SettingsIcon className="w-4 h-4" />
             </button>
