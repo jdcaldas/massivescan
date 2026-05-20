@@ -875,18 +875,18 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                 </div>
                               )}
                               {scenario.base64Image && (
-                                <div className={`absolute bottom-0 right-0 flex items-center gap-0.5 p-0.5 transition-opacity bg-black/30 ${gridRegenKey === key ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
-                                  <button onClick={() => toggleGroupFavorite(gi, pi)} className={`p-0.5 ${isFav ? 'text-amber-400' : 'text-white'}`}>
-                                    <StarIcon isFilled={isFav} className="w-3 h-3" />
+                                <div className={`absolute bottom-0 right-0 flex items-center gap-1.5 p-1.5 transition-opacity bg-black/70 ${gridRegenKey === key ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
+                                  <button onClick={() => toggleGroupFavorite(gi, pi)} className={`p-1 ${isFav ? 'text-amber-400' : 'text-white'}`}>
+                                    <StarIcon isFilled={isFav} className="w-4 h-4" />
                                   </button>
                                   <div className="relative">
                                     <button
                                       onClick={() => setGridRegenKey(prev => prev === key ? null : key)}
                                       onMouseDown={e => e.stopPropagation()}
-                                      className={`p-0.5 transition-colors ${gridRegenKey === key ? 'text-brand-secondary' : 'text-white'}`}
+                                      className={`p-1 transition-colors ${gridRegenKey === key ? 'text-brand-secondary' : 'text-white'}`}
                                       title="Regenerate options"
                                     >
-                                      <RefreshIcon className="w-3 h-3" />
+                                      <RefreshIcon className="w-4 h-4" />
                                     </button>
                                     {gridRegenKey === key && (
                                       <RegenMenu
@@ -959,18 +959,18 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                     </div>
                                   )}
                                   {imgS.base64Image && (
-                                    <div className={`absolute bottom-0 right-0 flex items-center gap-0.5 p-0.5 transition-opacity bg-black/30 ${gridRegenKey === key ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
-                                      <button onClick={() => toggleSubFavorite(gi, si, pi)} className={`p-0.5 ${isSgFav ? 'text-amber-400' : 'text-white'}`}>
-                                        <StarIcon isFilled={isSgFav} className="w-3 h-3" />
+                                    <div className={`absolute bottom-0 right-0 flex items-center gap-1.5 p-1.5 transition-opacity bg-black/70 ${gridRegenKey === key ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
+                                      <button onClick={() => toggleSubFavorite(gi, si, pi)} className={`p-1 ${isSgFav ? 'text-amber-400' : 'text-white'}`}>
+                                        <StarIcon isFilled={isSgFav} className="w-4 h-4" />
                                       </button>
                                       <div className="relative">
                                         <button
                                           onClick={() => setGridRegenKey(prev => prev === key ? null : key)}
                                           onMouseDown={e => e.stopPropagation()}
-                                          className={`p-0.5 transition-colors ${gridRegenKey === key ? 'text-brand-secondary' : 'text-white'}`}
+                                          className={`p-1 transition-colors ${gridRegenKey === key ? 'text-brand-secondary' : 'text-white'}`}
                                           title="Regenerate options"
                                         >
-                                          <RefreshIcon className="w-3 h-3" />
+                                          <RefreshIcon className="w-4 h-4" />
                                         </button>
                                         {gridRegenKey === key && (
                                           <RegenMenu
