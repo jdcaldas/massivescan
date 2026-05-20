@@ -60,13 +60,13 @@ interface ImageSlotProps {
 }
 
 // ── No-pick placeholder ─────────────────────────────────────────────────────
-const NoPick: React.FC<{ width: number; label?: string }> = ({ width, label }) => (
+const NoPick: React.FC<{ width: number; label?: string; color?: string }> = ({ width, label, color = '#fbbf24' }) => (
   <div
-    className="overflow-hidden flex-shrink-0 border-2 border-dashed border-amber-400/50 flex flex-col"
-    style={{ width, borderRadius: 1 }}
+    className="overflow-hidden flex-shrink-0 border-2 border-dashed flex flex-col"
+    style={{ width, borderRadius: 1, borderColor: `${color}80` }}
   >
     <div className="aspect-square w-full bg-brand-bg/50 flex flex-col items-center justify-center gap-1.5">
-      <StarIcon className="w-4 h-4 text-amber-400/40" />
+      <StarIcon className="w-4 h-4" style={{ color: `${color}60` }} />
       <span className="text-[7px] font-black uppercase tracking-widest text-brand-subtle/40 text-center px-2 leading-tight">
         no pick yet
       </span>
@@ -941,7 +941,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                 </div>
                               )}
                             </div>
-                            <div className="px-1.5 py-1 flex items-center gap-1" style={isFav ? { backgroundColor: '#fbbf24' } : {}}>
+                            <div className="px-1.5 py-1 flex items-center gap-1" style={isFav ? { backgroundColor: color } : {}}>
                               {isFav && <StarIcon isFilled className="w-2.5 h-2.5 text-black flex-shrink-0" />}
                               <p className={`text-[8px] font-black uppercase tracking-widest truncate ${isFav ? 'text-black' : 'text-brand-subtle/50'}`}>
                                 Cover {pi + 1}
@@ -951,7 +951,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                         );
                       })}
                       {showStarredOnly && group.favoriteImagePromptIndex == null && (
-                        <NoPick width={gridZoom} label="Cover" />
+                        <NoPick width={gridZoom} label="Cover" color={color} />
                       )}
                       </div>
                     </div>
@@ -1030,7 +1030,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                     </div>
                                   )}
                                 </div>
-                                <div className="px-1.5 py-1 flex items-center gap-1" style={isSgFav ? { backgroundColor: '#fbbf24' } : {}}>
+                                <div className="px-1.5 py-1 flex items-center gap-1" style={isSgFav ? { backgroundColor: color } : {}}>
                                   {isSgFav && <StarIcon isFilled className="w-2.5 h-2.5 text-black flex-shrink-0" />}
                                   <p className={`text-[8px] font-black uppercase tracking-widest truncate ${isSgFav ? 'text-black' : 'text-brand-subtle/40'}`} title={sg.title}>
                                     {pi + 1} / 2
@@ -1040,7 +1040,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                             );
                           })}
                           {showStarredOnly && sg.favoriteImagePromptIndex == null && (
-                            <NoPick width={gridZoom} />
+                            <NoPick width={gridZoom} color={color} />
                           )}
                           </div>
                         </div>
