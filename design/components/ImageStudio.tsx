@@ -528,16 +528,16 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
         </div>
 
         {/* ── Studio navigation band ────────────────────────────────────── */}
-        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FFE500' }}>
+        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#22D3EE' }}>
           <div className="flex-1 flex items-center pl-4">
-            <button onClick={onBack} className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest hover:bg-black/15 active:bg-black/25 transition-colors" style={{ borderRadius: 1 }}>
+            <button onClick={onBack} className="px-2.5 py-0.5 border-2 border-black text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 active:opacity-75 transition-opacity" style={{ backgroundColor: '#FF6B35', borderRadius: 1 }}>
               ← Concept Studio
             </button>
           </div>
           <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Image Studio —</span>
           <div className="flex-1 flex items-center justify-end pr-4">
             {onGoToCards && (
-              <button onClick={onGoToCards} className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest hover:bg-black/15 active:bg-black/25 transition-colors" style={{ borderRadius: 1 }}>
+              <button onClick={onGoToCards} className="px-2.5 py-0.5 border-2 border-black text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 active:opacity-75 transition-opacity" style={{ backgroundColor: '#BEF264', borderRadius: 1 }}>
                 Card Studio →
               </button>
             )}

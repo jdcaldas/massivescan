@@ -445,12 +445,12 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
         </div>
 
         {/* ── Studio navigation band ────────────────────────────────────── */}
-        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#C8B6FF' }}>
+        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#E879F9' }}>
           <div className="flex-1 flex items-center pl-4">
             <button
               onClick={onBack}
-              className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest text-black hover:bg-black/15 active:bg-black/25 transition-colors"
-              style={{ borderRadius: 1 }}
+              className="px-2.5 py-0.5 border-2 border-black text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 active:opacity-75 transition-opacity"
+              style={{ backgroundColor: '#BEF264', borderRadius: 1 }}
             >
               ← Card Studio
             </button>

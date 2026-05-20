@@ -504,12 +504,12 @@ const CardStudio: React.FC<CardStudioProps> = ({
         </div>
 
         {/* ── Studio navigation band ────────────────────────────────────── */}
-        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FF4F6D' }}>
+        <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#BEF264' }}>
           <div className="flex-1 flex items-center pl-4">
             <button
               onClick={onBack}
-              className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest text-black hover:bg-black/15 active:bg-black/25 transition-colors"
-              style={{ borderRadius: 1 }}
+              className="px-2.5 py-0.5 border-2 border-black text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 active:opacity-75 transition-opacity"
+              style={{ backgroundColor: '#22D3EE', borderRadius: 1 }}
             >
               ← Image Studio
             </button>
@@ -519,8 +519,8 @@ const CardStudio: React.FC<CardStudioProps> = ({
             {onGoToFusion && (
               <button
                 onClick={onGoToFusion}
-                className="px-2.5 py-0.5 border-2 border-black/50 text-[10px] font-black uppercase tracking-widest text-black hover:bg-black/15 active:bg-black/25 transition-colors"
-                style={{ borderRadius: 1 }}
+                className="px-2.5 py-0.5 border-2 border-black text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 active:opacity-75 transition-opacity"
+                style={{ backgroundColor: '#E879F9', borderRadius: 1 }}
               >
                 Deck Fusion →
               </button>
