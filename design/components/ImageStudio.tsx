@@ -900,8 +900,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                 </div>
                               )}
                             </div>
-                            <div className="px-1.5 py-1">
-                              <p className="text-[8px] font-black text-brand-subtle/50 uppercase tracking-widest truncate">
+                            <div className="px-1.5 py-1 flex items-center gap-1" style={isFav ? { backgroundColor: '#fbbf24' } : {}}>
+                              {isFav && <StarIcon isFilled className="w-2.5 h-2.5 text-black flex-shrink-0" />}
+                              <p className={`text-[8px] font-black uppercase tracking-widest truncate ${isFav ? 'text-black' : 'text-brand-subtle/50'}`}>
                                 Cover {pi + 1}
                               </p>
                             </div>
@@ -984,8 +985,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                     </div>
                                   )}
                                 </div>
-                                <div className="px-1.5 py-1">
-                                  <p className="text-[8px] font-black text-brand-subtle/40 uppercase tracking-widest truncate" title={sg.title}>
+                                <div className="px-1.5 py-1 flex items-center gap-1" style={isSgFav ? { backgroundColor: '#fbbf24' } : {}}>
+                                  {isSgFav && <StarIcon isFilled className="w-2.5 h-2.5 text-black flex-shrink-0" />}
+                                  <p className={`text-[8px] font-black uppercase tracking-widest truncate ${isSgFav ? 'text-black' : 'text-brand-subtle/40'}`} title={sg.title}>
                                     {pi + 1} / 2
                                   </p>
                                 </div>
