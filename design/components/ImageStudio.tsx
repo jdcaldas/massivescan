@@ -103,10 +103,15 @@ const ImageSlot: React.FC<ImageSlotProps> = ({
               {isSmall ? 'Gen' : 'Generate'}
             </button>
           </div>
+        {isFavorite && (
+          <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 border-2 border-black text-[8px] font-black uppercase tracking-widest text-black" style={{ backgroundColor: '#fbbf24', borderRadius: 1 }}>
+            <StarIcon isFilled className="w-2.5 h-2.5" />
+            Hero
+          </div>
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer — prompt */}
       <div className={`${isSmall ? 'p-1.5' : 'p-2.5'} flex-1 flex flex-col`}>
         <button
           onClick={() => setPromptExpanded(v => !v)}
@@ -121,38 +126,42 @@ const ImageSlot: React.FC<ImageSlotProps> = ({
             <span className="block text-[8px] font-black uppercase tracking-widest text-brand-subtle/40 mt-1">▴ collapse</span>
           )}
         </button>
-        <div className="flex items-center justify-between mt-1.5">
-          <button
-            onClick={onFavorite}
-            disabled={!base64}
-            className={`flex items-center gap-0.5 ${isSmall ? 'text-[8px]' : 'text-[9px]'} font-black uppercase tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${isFavorite ? 'text-amber-400' : 'text-brand-subtle hover:text-amber-400'}`}
-            title={isFavorite ? 'Remove hero' : 'Set as hero reference for subgroups'}
-          >
-            <StarIcon isFilled={isFavorite} className={`${isSmall ? 'w-2.5 h-2.5' : 'w-3 h-3'}`} />
-            {isFavorite ? 'Hero' : 'Star'}
-          </button>
-          {base64 && (
-            <div className="relative">
-              <button
-                onClick={() => setRegenOpen(v => !v)}
-                onMouseDown={e => e.stopPropagation()}
-                disabled={genState === 'generating'}
-                className={`p-0.5 transition-colors disabled:opacity-30 ${regenOpen ? 'text-brand-text' : 'text-brand-subtle hover:text-brand-text'}`}
-                title="Regenerate options"
-              >
-                <RefreshIcon className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
-              </button>
-              {regenOpen && (
-                <RegenMenu
-                  onClose={() => setRegenOpen(false)}
-                  onSimple={() => { onGenerate(); setRegenOpen(false); }}
-                  onWithExtra={(extra) => { onGenerate(extra); setRegenOpen(false); }}
-                  isGenerating={genState === 'generating'}
-                />
-              )}
-            </div>
-          )}
-        </div>
+      </div>
+      {/* Action bar — full width, fills amber when hero */}
+      <div
+        className={`flex items-center justify-between ${isSmall ? 'px-1.5 py-1' : 'px-2.5 py-1.5'}`}
+        style={isFavorite ? { backgroundColor: '#fbbf24' } : {}}
+      >
+        <button
+          onClick={onFavorite}
+          disabled={!base64}
+          className={`flex items-center gap-1 ${isSmall ? 'text-[8px]' : 'text-[9px]'} font-black uppercase tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${isFavorite ? 'text-black' : 'text-brand-subtle hover:text-amber-400'}`}
+          title={isFavorite ? 'Remove hero' : 'Set as hero reference for subgroups'}
+        >
+          <StarIcon isFilled={isFavorite} className={`${isSmall ? 'w-2.5 h-2.5' : 'w-3 h-3'}`} />
+          {isFavorite ? 'Hero' : 'Star'}
+        </button>
+        {base64 && (
+          <div className="relative">
+            <button
+              onClick={() => setRegenOpen(v => !v)}
+              onMouseDown={e => e.stopPropagation()}
+              disabled={genState === 'generating'}
+              className={`p-0.5 transition-colors disabled:opacity-30 ${regenOpen ? 'text-brand-text' : 'text-brand-subtle hover:text-brand-text'}`}
+              title="Regenerate options"
+            >
+              <RefreshIcon className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
+            </button>
+            {regenOpen && (
+              <RegenMenu
+                onClose={() => setRegenOpen(false)}
+                onSimple={() => { onGenerate(); setRegenOpen(false); }}
+                onWithExtra={(extra) => { onGenerate(extra); setRegenOpen(false); }}
+                isGenerating={genState === 'generating'}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
