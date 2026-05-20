@@ -101,6 +101,7 @@ const Header: React.FC<HeaderProps> = ({
 
         {/* Top bar */}
         <div className="flex justify-between items-center h-16">
+
           {/* Left zone */}
           <div className="flex items-center gap-3">
             {/* Back to concepts (arrow only) */}
@@ -195,11 +196,6 @@ const Header: React.FC<HeaderProps> = ({
               ))}
             </div>
           </div>
-        </div>
-
-        {/* ── Studio identity band ───────────────────────────────────────── */}
-        <div className="-mx-6 h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#6EE7B7' }}>
-          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none">— Concept Studio —</span>
         </div>
 
         {/* Collapsible section */}
@@ -338,6 +334,11 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
+      </div>
+
+      {/* ── Studio identity band — full width ─────────────────────────────── */}
+      <div className="h-8 flex items-center justify-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#6EE7B7' }}>
+        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none">— Concept Studio —</span>
       </div>
     </header>
   );
