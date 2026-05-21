@@ -91,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({
   onRegenerateAllSubgroups,
   onOpenUsage,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(canExport);
   const [descExpanded, setDescExpanded] = useState(true);
   const [translateTo, setTranslateTo] = useState(defaultTranslateTo ?? 'Portuguese');
 
@@ -140,19 +140,6 @@ const Header: React.FC<HeaderProps> = ({
 
           {/* Right zone */}
           <div className="flex items-center flex-shrink-0 gap-2">
-            {/* Forward CTA — shown when there's content to advance */}
-            {onGoToImages && canExport && (
-              <button
-                onClick={onGoToImages}
-                disabled={isGenerating}
-                className="flex items-center gap-1.5 border-2 border-black dark:border-brand-primary px-4 py-1.5 text-[11px] font-black uppercase tracking-widest text-brand-text hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
-                style={{ backgroundColor: '#6EE7B7', boxShadow: '2px 2px 0 #000', borderRadius: 1 }}
-                title="Go to Image Studio"
-              >
-                Image Studio →
-              </button>
-            )}
-
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="p-2 rounded text-brand-subtle hover:text-brand-text hover:bg-brand-bg transition-colors"

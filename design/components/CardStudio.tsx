@@ -377,6 +377,40 @@ const BackConfig: React.FC<BackConfigProps> = ({ group, color, onToggleBorder })
   );
 };
 
+// ── Sync-all toggle ───────────────────────────────────────────────────────────
+
+const SyncToggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = ({ checked, onChange }) => (
+  <label className="relative inline-flex items-center gap-2.5 cursor-pointer select-none">
+    <input
+      type="checkbox"
+      className="sr-only peer"
+      checked={checked}
+      onChange={e => onChange(e.target.checked)}
+    />
+    <div
+      className={`
+        w-11 h-6 rounded-full border-2 border-black
+        transition-colors duration-200
+        peer-checked:shadow-[2px_2px_0px_rgba(0,0,0,1)]
+        after:content-[''] after:absolute after:top-[4px] after:left-[4px]
+        after:w-4 after:h-4 after:bg-white after:rounded-full
+        after:border-2 after:border-black after:transition-all
+        peer-checked:after:translate-x-5
+      `}
+      style={{ backgroundColor: checked ? '#BEF264' : '#9CA3AF' }}
+    />
+    <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">
+      Apply to all game card groups
+    </span>
+    {checked && (
+      <span
+        className="px-1.5 py-px text-[8px] font-black uppercase tracking-widest border-2 border-black"
+        style={{ backgroundColor: '#BEF264', color: '#1A1A1A', borderRadius: 1 }}
+      >ON</span>
+    )}
+  </label>
+);
+
 // ── Coming-soon placeholder (Power-ups, Utilities) ────────────────────────────
 
 const TBDPanel: React.FC<{ label: string }> = ({ label }) => (
@@ -417,11 +451,20 @@ const CardStudio: React.FC<CardStudioProps> = ({
   );
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({ 0: true });
   const [isUsageOpen, setIsUsageOpen] = useState(false);
+  const [syncGameCards, setSyncGameCards] = useState(false);
 
   const applyAndSave = useCallback((s: DesignStructure) => {
     setStructure(s);
     onSave(s);
   }, [onSave]);
+
+  // Returns the indices of all game card groups in the structure
+  const gameCardIndices = useCallback((s: DesignStructure): number[] =>
+    s.groups.reduce<number[]>((acc, g, i) => {
+      if (GAME_CARD_TYPES.has(g.groupType ?? '')) acc.push(i);
+      return acc;
+    }, [])
+  , []);
 
   // Apply a layout preset to every imagePrompt in the group (and all subgroups)
   const applyPreset = useCallback((gi: number, presetId: string) => {
@@ -430,10 +473,13 @@ const CardStudio: React.FC<CardStudioProps> = ({
     const s: DesignStructure = JSON.parse(JSON.stringify(structure));
     const apply = (p: ImageScenario) =>
       Object.entries(preset.values).forEach(([k, v]) => { (p as Record<string, unknown>)[k] = v; });
-    s.groups[gi].imagePrompts.forEach(apply);
-    s.groups[gi].subgroups.forEach(sg => sg.imagePrompts.forEach(apply));
+    const targets = syncGameCards ? gameCardIndices(s) : [gi];
+    targets.forEach(i => {
+      s.groups[i].imagePrompts.forEach(apply);
+      s.groups[i].subgroups.forEach(sg => sg.imagePrompts.forEach(apply));
+    });
     applyAndSave(s);
-  }, [structure, applyAndSave]);
+  }, [structure, applyAndSave, syncGameCards, gameCardIndices]);
 
   // Clear all position values for the group
   const clearGroup = useCallback((gi: number) => {
@@ -442,26 +488,33 @@ const CardStudio: React.FC<CardStudioProps> = ({
       p.qrCodePosition = 'none'; p.number_Position = 'none';
       p.boxColorPosition = 'none'; p.letter_Position = 'none'; p.powerPosition = 'none';
     };
-    s.groups[gi].imagePrompts.forEach(clear);
-    s.groups[gi].subgroups.forEach(sg => sg.imagePrompts.forEach(clear));
+    const targets = syncGameCards ? gameCardIndices(s) : [gi];
+    targets.forEach(i => {
+      s.groups[i].imagePrompts.forEach(clear);
+      s.groups[i].subgroups.forEach(sg => sg.imagePrompts.forEach(clear));
+    });
     applyAndSave(s);
-  }, [structure, applyAndSave]);
+  }, [structure, applyAndSave, syncGameCards, gameCardIndices]);
 
   // Set a single position field on all imagePrompts in the group
   const setGroupPosition = useCallback((gi: number, field: keyof ImageScenario, value: string) => {
     const s: DesignStructure = JSON.parse(JSON.stringify(structure));
     const apply = (p: ImageScenario) => { (p as Record<string, unknown>)[field as string] = value; };
-    s.groups[gi].imagePrompts.forEach(apply);
-    s.groups[gi].subgroups.forEach(sg => sg.imagePrompts.forEach(apply));
+    const targets = syncGameCards ? gameCardIndices(s) : [gi];
+    targets.forEach(i => {
+      s.groups[i].imagePrompts.forEach(apply);
+      s.groups[i].subgroups.forEach(sg => sg.imagePrompts.forEach(apply));
+    });
     applyAndSave(s);
-  }, [structure, applyAndSave]);
+  }, [structure, applyAndSave, syncGameCards, gameCardIndices]);
 
   // Toggle colored border on the back of the group's cards
   const toggleBackBorder = useCallback((gi: number, value: boolean) => {
     const s: DesignStructure = JSON.parse(JSON.stringify(structure));
-    s.groups[gi].backColoredBorder = value;
+    const targets = syncGameCards ? gameCardIndices(s) : [gi];
+    targets.forEach(i => { s.groups[i].backColoredBorder = value; });
     applyAndSave(s);
-  }, [structure, applyAndSave]);
+  }, [structure, applyAndSave, syncGameCards, gameCardIndices]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -583,7 +636,19 @@ const CardStudio: React.FC<CardStudioProps> = ({
               {isExpanded && (
                 <div className="border-t border-black/10 dark:border-brand-primary/20">
                   {isGameCard ? (
-                    <div className="px-5 py-5 grid grid-cols-2 gap-x-8 gap-y-6">
+                    <div className="px-5 py-5 space-y-5">
+                    {/* Sync toggle */}
+                    <div
+                      className="flex items-center gap-3 px-3 py-2.5 border-2 border-dashed"
+                      style={{
+                        borderColor: syncGameCards ? '#000' : 'rgba(0,0,0,0.15)',
+                        backgroundColor: syncGameCards ? '#BEF264' : 'transparent',
+                        borderRadius: 1,
+                      }}
+                    >
+                      <SyncToggle checked={syncGameCards} onChange={setSyncGameCards} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                       {/* FRONT ───────── */}
                       <div>
                         <div className="flex items-center gap-2 mb-4">
@@ -611,6 +676,7 @@ const CardStudio: React.FC<CardStudioProps> = ({
                           onToggleBorder={v => toggleBackBorder(gi, v)}
                         />
                       </div>
+                    </div>
                     </div>
                   ) : (
                     <div className="px-5 py-5">

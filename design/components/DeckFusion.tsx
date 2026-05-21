@@ -212,7 +212,9 @@ const CardPreviewModal: React.FC<{ deck: MergedDeck; theme: string; onClose: () 
     );
   };
 
-  const matched = deck.qrcodes.filter(q => q.gdesign_data).length;
+  const modalFronts  = deck.qrcodes.filter(q => q.type !== 'game_card_back');
+  const modalBacks   = deck.qrcodes.filter(q => q.type === 'game_card_back');
+  const matched      = modalFronts.filter(q => q.gdesign_data).length;
   const visibleCards = cards.filter(c => cardMatchesFilter(c, activeFilter));
 
   // Only show filter tabs that have at least one card
@@ -233,11 +235,19 @@ const CardPreviewModal: React.FC<{ deck: MergedDeck; theme: string; onClose: () 
           <div className="flex items-center gap-3">
             <span className="text-xs font-black uppercase tracking-widest text-brand-text">Preview</span>
             <span className="text-xs font-black text-brand-subtle truncate max-w-[240px]">{theme}</span>
-            <div
-              className="px-2 py-px text-[9px] font-black uppercase tracking-widest border-2 border-black"
-              style={{ backgroundColor: '#6EE7B7', color: '#1A1A1A', borderRadius: 1 }}
-            >
-              {matched}/{deck.qrcodes.length} matched
+            <div className="flex items-center gap-1.5">
+              <div
+                className="px-2 py-px text-[9px] font-black uppercase tracking-widest border-2 border-black"
+                style={{ backgroundColor: '#6EE7B7', color: '#1A1A1A', borderRadius: 1 }}
+              >
+                {matched}/{modalFronts.length} fronts
+              </div>
+              <div
+                className="px-2 py-px text-[9px] font-black uppercase tracking-widest border-2 border-black"
+                style={{ backgroundColor: '#3A3A3A', color: '#FFFFFF', borderRadius: 1 }}
+              >
+                {modalBacks.length} backs
+              </div>
             </div>
           </div>
           <button
@@ -464,10 +474,12 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
 
   // ── Stats ─────────────────────────────────────────────────────────────────
 
-  const totalCards  = mergedDeck?.qrcodes.length ?? 0;
-  const matchedCards = mergedDeck?.qrcodes.filter(q => q.gdesign_data).length ?? 0;
-  const warnCount   = logs.filter(l => l.startsWith('Warning')).length;
-  const errCount    = logs.filter(l => l.startsWith('ERROR')).length;
+  const frontCount   = mergedDeck?.qrcodes.filter(q => q.type !== 'game_card_back').length ?? 0;
+  const backCount    = mergedDeck?.qrcodes.filter(q => q.type === 'game_card_back').length ?? 0;
+  const totalCards   = mergedDeck?.qrcodes.length ?? 0;
+  const matchedCards = mergedDeck?.qrcodes.filter(q => q.gdesign_data && q.type !== 'game_card_back').length ?? 0;
+  const warnCount    = logs.filter(l => l.startsWith('Warning')).length;
+  const errCount     = logs.filter(l => l.startsWith('ERROR')).length;
   const assignedCount = structure.groups.filter(g => g.groupType).length;
 
   // ── Deck summary ──────────────────────────────────────────────────────────
@@ -613,14 +625,28 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
               Import
             </button>
 
-            {deckConfig && (
-              <div
-                className="px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-black"
-                style={{ backgroundColor: '#6EE7B7', color: '#1A1A1A', borderRadius: 1, boxShadow: '2px 2px 0 #000' }}
-              >
-                {deckConfig.qrcodes.length} QR codes
-              </div>
-            )}
+            {deckConfig && (() => {
+              const dcFronts = deckConfig.qrcodes.filter(q => q.type !== 'game_card_back').length;
+              const dcBacks  = deckConfig.qrcodes.filter(q => q.type === 'game_card_back').length;
+              return (
+                <div className="flex items-center gap-1">
+                  <div
+                    className="px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-black"
+                    style={{ backgroundColor: '#6EE7B7', color: '#1A1A1A', borderRadius: 1, boxShadow: '2px 2px 0 #000' }}
+                  >
+                    {dcFronts} Fronts
+                  </div>
+                  {dcBacks > 0 && (
+                    <div
+                      className="px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-black"
+                      style={{ backgroundColor: '#3A3A3A', color: '#FFFFFF', borderRadius: 1, boxShadow: '2px 2px 0 #000' }}
+                    >
+                      {dcBacks} Backs
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* RIGHT — actions */}
@@ -780,9 +806,10 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
 
             {/* Stats strip (post-merge) */}
             {mergedDeck && (
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {[
-                  { label: 'Total',   value: totalCards,   bg: '#1A1A1A', fg: '#6EE7B7' },
+                  { label: 'Fronts',  value: frontCount,   bg: '#1A1A1A', fg: '#6EE7B7' },
+                  { label: 'Backs',   value: backCount,    bg: '#3A3A3A', fg: '#FFFFFF' },
                   { label: 'Matched', value: matchedCards, bg: '#6EE7B7', fg: '#1A1A1A' },
                   { label: 'Warn',    value: warnCount,    bg: '#FFE500', fg: '#1A1A1A' },
                   { label: 'Errors',  value: errCount,     bg: errCount > 0 ? '#FF4F6D' : '#1A1A1A', fg: '#fff' },
