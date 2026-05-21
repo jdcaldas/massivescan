@@ -32,6 +32,10 @@ const GROUP_TYPE_LABEL: Record<string, string> = {
 
 // Full card config is available for these types only
 const GAME_CARD_TYPES = new Set(['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D']);
+const POWERUP_CARD_TYPES = new Set(['Grupo Power-ups']);
+const UTILITY_CARD_TYPES = new Set(['Grupo Extra/Utilitários', 'Grupo Activators']);
+// All group types that get a Front+Back configuration panel (vs the TBD placeholder)
+const CONFIGURABLE_TYPES = new Set([...GAME_CARD_TYPES, ...POWERUP_CARD_TYPES, ...UTILITY_CARD_TYPES]);
 
 // ── Front element meta (position badges) ─────────────────────────────────────
 
@@ -72,8 +76,63 @@ const PRESETS: Preset[] = [
   },
 ];
 
-function detectPreset(p: ImageScenario): string | null {
-  for (const pr of PRESETS) {
+// Power-Up presets — no Letter element; presets revolve around how visible
+// the gameplay-affecting bits are (number + color + power icon).
+const POWERUP_PRESETS: Preset[] = [
+  {
+    id: 'pu-full',
+    label: 'Full',
+    desc: 'QR · # · Cor · Power',
+    values: { qrCodePosition: 'BL', number_Position: 'TR', boxColorPosition: 'TL', letter_Position: 'none', powerPosition: 'center' },
+  },
+  {
+    id: 'pu-numbered',
+    label: 'Numbered',
+    desc: 'QR · # · Power',
+    values: { qrCodePosition: 'BL', number_Position: 'TR', boxColorPosition: 'none', letter_Position: 'none', powerPosition: 'center' },
+  },
+  {
+    id: 'pu-minimal',
+    label: 'Minimal',
+    desc: 'QR · Power',
+    values: { qrCodePosition: 'BL', number_Position: 'none', boxColorPosition: 'none', letter_Position: 'none', powerPosition: 'center' },
+  },
+];
+
+// Utility / Activators: only QR position matters. Two presets cover the
+// common cases — big centered QR (easy to scan) or QR in a corner.
+const UTILITY_PRESETS: Preset[] = [
+  {
+    id: 'ut-center',
+    label: 'QR Center',
+    desc: 'Big centered QR — fast to scan',
+    values: { qrCodePosition: 'center', number_Position: 'none', boxColorPosition: 'none', letter_Position: 'none', powerPosition: 'none' },
+  },
+  {
+    id: 'ut-corner',
+    label: 'QR Corner',
+    desc: 'QR bottom-left',
+    values: { qrCodePosition: 'BL', number_Position: 'none', boxColorPosition: 'none', letter_Position: 'none', powerPosition: 'none' },
+  },
+];
+
+/** Returns the preset list appropriate for the given group type. */
+const presetsForGroupType = (gt: string | undefined): Preset[] => {
+  if (!gt) return PRESETS;
+  if (POWERUP_CARD_TYPES.has(gt)) return POWERUP_PRESETS;
+  if (UTILITY_CARD_TYPES.has(gt)) return UTILITY_PRESETS;
+  return PRESETS;
+};
+
+/** Finds a preset by id across all preset sets. */
+const findPreset = (id: string): Preset | undefined =>
+  PRESETS.find(p => p.id === id)
+  ?? POWERUP_PRESETS.find(p => p.id === id)
+  ?? UTILITY_PRESETS.find(p => p.id === id);
+
+function detectPreset(p: ImageScenario, gt?: string): string | null {
+  const presets = presetsForGroupType(gt);
+  for (const pr of presets) {
     const match = Object.entries(pr.values).every(([k, v]) => (p as Record<string, unknown>)[k] === v);
     if (match) return pr.id;
   }
@@ -87,9 +146,12 @@ function detectPreset(p: ImageScenario): string | null {
 
 const MiniCardFront: React.FC<{ scenario: ImageScenario; color: string }> = ({ scenario, color }) => {
   const corners: Record<string, { bg: string; fg: string; label: string } | null> = { TL: null, TR: null, BL: null, BR: null };
+  let qrCenter: { bg: string; fg: string; label: string } | null = null;
   Object.entries(ELEM_META).forEach(([key, meta]) => {
     const pos = (scenario as Record<string, unknown>)[key] as string;
-    if (pos && pos !== 'none') corners[pos] = meta;
+    if (!pos || pos === 'none') return;
+    if (pos === 'center' && key === 'qrCodePosition') qrCenter = meta;
+    else if (pos in corners) corners[pos] = meta;
   });
 
   return (
@@ -113,8 +175,14 @@ const MiniCardFront: React.FC<{ scenario: ImageScenario; color: string }> = ({ s
           }}
         >{cfg.label}</div>
       ))}
+      {/* Centered QR (utility / activator cards) */}
+      {qrCenter && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[8px] font-black border-2 border-black"
+          style={{ width: 28, height: 28, backgroundColor: (qrCenter as any).bg, color: (qrCenter as any).fg, borderRadius: 2 }}
+        >{(qrCenter as any).label}</div>
+      )}
       {/* Power bar */}
-      {scenario.powerPosition === 'center' && (
+      {scenario.powerPosition === 'center' && !qrCenter && (
         <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 px-1.5 py-px text-[6px] font-black border border-black/40"
           style={{ backgroundColor: '#FFE500', color: '#1A1A1A' }}
         >PWR</div>
@@ -142,8 +210,8 @@ const MiniCardBack: React.FC<{ scenario: ImageScenario; color: string; hasBorder
 
 const GroupStatusBadges: React.FC<{ group: Group; color: string }> = ({ group, color }) => {
   const p = group.imagePrompts[0];
-  const presetId = p ? detectPreset(p) : null;
-  const preset = PRESETS.find(pr => pr.id === presetId);
+  const presetId = p ? detectPreset(p, group.groupType) : null;
+  const preset = presetId ? findPreset(presetId) : undefined;
   const hasBorder = !!group.backColoredBorder;
 
   return (
@@ -180,12 +248,46 @@ const CORNER_OPTIONS = [
   { value: 'BR',   label: 'BR' },
 ] as const;
 
-const ELEM_ROWS: { field: keyof ImageScenario; label: string; meta: { bg: string; fg: string; label: string } }[] = [
+// Utility / Activators allow QR in the middle of the card too
+const CORNER_PLUS_CENTER_OPTIONS = [
+  ...CORNER_OPTIONS,
+  { value: 'center', label: '⊙' },
+] as const;
+
+type PositionOption = { value: string; label: string };
+type ElemRow = {
+  field: keyof ImageScenario;
+  label: string;
+  meta: { bg: string; fg: string; label: string };
+  /** Override the default 5-corner picker (e.g. add 'center' for utility QR). */
+  options?: readonly PositionOption[];
+};
+
+const ELEM_ROWS: ElemRow[] = [
   { field: 'qrCodePosition',   label: 'QR Code', meta: ELEM_META.qrCodePosition   },
   { field: 'number_Position',  label: 'Number',  meta: ELEM_META.number_Position  },
   { field: 'boxColorPosition', label: 'Colour',  meta: ELEM_META.boxColorPosition },
   { field: 'letter_Position',  label: 'Letter',  meta: ELEM_META.letter_Position  },
 ];
+
+// Power-ups: same as game cards minus the Letter row
+const POWERUP_ELEM_ROWS: ElemRow[] = [
+  { field: 'qrCodePosition',   label: 'QR Code', meta: ELEM_META.qrCodePosition   },
+  { field: 'number_Position',  label: 'Number',  meta: ELEM_META.number_Position  },
+  { field: 'boxColorPosition', label: 'Colour',  meta: ELEM_META.boxColorPosition },
+];
+
+// Utility / Activators: only QR, but with the bonus 'center' position
+const UTILITY_ELEM_ROWS: ElemRow[] = [
+  { field: 'qrCodePosition', label: 'QR Code', meta: ELEM_META.qrCodePosition, options: CORNER_PLUS_CENTER_OPTIONS },
+];
+
+const elemRowsForGroupType = (gt: string | undefined): ElemRow[] => {
+  if (!gt) return ELEM_ROWS;
+  if (POWERUP_CARD_TYPES.has(gt)) return POWERUP_ELEM_ROWS;
+  if (UTILITY_CARD_TYPES.has(gt)) return UTILITY_ELEM_ROWS;
+  return ELEM_ROWS;
+};
 
 // ── FRONT config panel ────────────────────────────────────────────────────────
 
@@ -195,11 +297,20 @@ interface FrontConfigProps {
   onApplyPreset: (id: string) => void;
   onSetPosition: (field: keyof ImageScenario, value: string) => void;
   onClear: () => void;
+  /** Override the default game-card preset list (used by Power-Ups). */
+  presets?: Preset[];
+  /** Override the default game-card element rows (Power-Ups has no Letter). */
+  elemRows?: ElemRow[];
+  /** Show the Power on/off row (game cards & power-ups). Off for utility/activator. */
+  showPower?: boolean;
 }
 
-const FrontConfig: React.FC<FrontConfigProps> = ({ group, color, onApplyPreset, onSetPosition, onClear }) => {
+const FrontConfig: React.FC<FrontConfigProps> = ({
+  group, color, onApplyPreset, onSetPosition, onClear,
+  presets = PRESETS, elemRows = ELEM_ROWS, showPower = true,
+}) => {
   const scenario = (group.imagePrompts[0] ?? {}) as ImageScenario;
-  const activePreset = detectPreset(scenario);
+  const activePreset = detectPreset(scenario, group.groupType);
 
   return (
     <div className="flex gap-5 items-start">
@@ -214,7 +325,7 @@ const FrontConfig: React.FC<FrontConfigProps> = ({ group, color, onApplyPreset, 
         <div>
           <div className="text-[8px] font-black uppercase tracking-widest text-brand-subtle mb-1.5">Quick Preset</div>
           <div className="flex gap-1 flex-wrap">
-            {PRESETS.map(pr => {
+            {presets.map(pr => {
               const isActive = activePreset === pr.id;
               return (
                 <button
@@ -248,8 +359,9 @@ const FrontConfig: React.FC<FrontConfigProps> = ({ group, color, onApplyPreset, 
         <div>
           <div className="text-[8px] font-black uppercase tracking-widest text-brand-subtle mb-1.5">Element Positions</div>
           <div className="space-y-1">
-            {ELEM_ROWS.map(({ field, label, meta }) => {
+            {elemRows.map(({ field, label, meta, options }) => {
               const current = (scenario[field] as string) || 'none';
+              const positionOptions = options ?? CORNER_OPTIONS;
               return (
                 <div key={field} className="flex items-center gap-2">
                   {/* Element badge */}
@@ -260,7 +372,7 @@ const FrontConfig: React.FC<FrontConfigProps> = ({ group, color, onApplyPreset, 
                   <span className="text-[9px] font-black text-brand-subtle w-12 flex-shrink-0">{label}</span>
                   {/* Position buttons */}
                   <div className="flex gap-0.5">
-                    {CORNER_OPTIONS.map(opt => {
+                    {positionOptions.map(opt => {
                       const isSelected = current === opt.value;
                       return (
                         <button
@@ -283,8 +395,8 @@ const FrontConfig: React.FC<FrontConfigProps> = ({ group, color, onApplyPreset, 
               );
             })}
 
-            {/* Power bar row (on / off only) */}
-            {(() => {
+            {/* Power bar row (on / off only) — hidden for utility/activator groups */}
+            {showPower && (() => {
               const isOn = scenario.powerPosition === 'center';
               return (
                 <div className="flex items-center gap-2">
@@ -322,6 +434,10 @@ const FrontConfig: React.FC<FrontConfigProps> = ({ group, color, onApplyPreset, 
     </div>
   );
 };
+
+/** Helper: should the Power row be visible for this group type? */
+const showPowerForGroupType = (gt: string | undefined): boolean =>
+  !gt || GAME_CARD_TYPES.has(gt) || POWERUP_CARD_TYPES.has(gt);
 
 // ── BACK config panel ─────────────────────────────────────────────────────────
 
@@ -470,7 +586,7 @@ const CardStudio: React.FC<CardStudioProps> = ({
 
   // Apply a layout preset to every imagePrompt in the group (and all subgroups)
   const applyPreset = useCallback((gi: number, presetId: string) => {
-    const preset = PRESETS.find(p => p.id === presetId);
+    const preset = findPreset(presetId);
     if (!preset) return;
     const s: DesignStructure = JSON.parse(JSON.stringify(structure));
     const apply = (p: ImageScenario) =>
@@ -589,7 +705,10 @@ const CardStudio: React.FC<CardStudioProps> = ({
         {structure.groups.map((group, gi) => {
           const color = CARD_COLORS[gi % CARD_COLORS.length];
           const isExpanded = expandedGroups[gi] ?? false;
-          const isGameCard = GAME_CARD_TYPES.has(group.groupType ?? '');
+          const isGameCard     = GAME_CARD_TYPES.has(group.groupType ?? '');
+          const isPowerUp      = POWERUP_CARD_TYPES.has(group.groupType ?? '');
+          const isUtilityLike  = UTILITY_CARD_TYPES.has(group.groupType ?? '');
+          const isConfigurable = CONFIGURABLE_TYPES.has(group.groupType ?? '');
           const typeLabel = GROUP_TYPE_LABEL[group.groupType ?? ''] ?? '';
 
           // Collect all images across group + subgroups for the thumbnail strip
@@ -624,7 +743,7 @@ const CardStudio: React.FC<CardStudioProps> = ({
 
                 {/* Status summary */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {isGameCard && <GroupStatusBadges group={group} color={color} />}
+                  {isConfigurable && <GroupStatusBadges group={group} color={color} />}
                   {allImages.length > 0 && (
                     <span className="text-[9px] font-black text-brand-subtle/40">{allImages.length} img{allImages.length !== 1 ? 's' : ''}</span>
                   )}
@@ -637,19 +756,21 @@ const CardStudio: React.FC<CardStudioProps> = ({
               {/* Expanded content */}
               {isExpanded && (
                 <div className="border-t border-black/10 dark:border-brand-primary/20">
-                  {isGameCard ? (
+                  {isConfigurable ? (
                     <div className="px-5 py-5 space-y-5">
-                    {/* Sync toggle */}
-                    <div
-                      className="flex items-center gap-3 px-3 py-2.5 border-2 border-dashed"
-                      style={{
-                        borderColor: syncGameCards ? '#000' : 'rgba(0,0,0,0.15)',
-                        backgroundColor: syncGameCards ? '#BEF264' : 'transparent',
-                        borderRadius: 1,
-                      }}
-                    >
-                      <SyncToggle checked={syncGameCards} onChange={setSyncGameCards} />
-                    </div>
+                    {/* Sync toggle — game-card groups only (Power-Ups have their own layout) */}
+                    {isGameCard && (
+                      <div
+                        className="flex items-center gap-3 px-3 py-2.5 border-2 border-dashed"
+                        style={{
+                          borderColor: syncGameCards ? '#000' : 'rgba(0,0,0,0.15)',
+                          backgroundColor: syncGameCards ? '#BEF264' : 'transparent',
+                          borderRadius: 1,
+                        }}
+                      >
+                        <SyncToggle checked={syncGameCards} onChange={setSyncGameCards} />
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                       {/* FRONT ───────── */}
                       <div>
@@ -663,6 +784,9 @@ const CardStudio: React.FC<CardStudioProps> = ({
                           onApplyPreset={id => applyPreset(gi, id)}
                           onSetPosition={(field, value) => setGroupPosition(gi, field, value)}
                           onClear={() => clearGroup(gi)}
+                          presets={presetsForGroupType(group.groupType)}
+                          elemRows={elemRowsForGroupType(group.groupType)}
+                          showPower={showPowerForGroupType(group.groupType)}
                         />
                       </div>
 

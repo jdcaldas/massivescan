@@ -55,20 +55,21 @@ export const IMAGE_STYLES: ImageStyle[] = [
   { id: 'steampunk',      label: 'Steampunk',      suffix: 'steampunk style, brass and copper, Victorian era, steam and gears' },
 ];
 
-// Model families for image generation.
-// "Nano Banana" = Gemini native multimodal image gen (generateContent + IMAGE modality).
-// "Imagen" = dedicated standalone image engine (generateImages API).
-// "Nano Banana" = Gemini native multimodal image gen (generateContent + IMAGE modality).
-// "Imagen" = dedicated standalone image engine (generateImages API).
+// Image generation models — three tiers across two families.
+//
+// Tier guide:
+//   • Draft    → fast iteration, low cost (Gemini 3.1 Flash image)
+//   • Standard → premium Gemini image (Gemini 3 Pro image)
+//   • Hero     → covers, legendary 3★ cards, key art (Imagen 4 — native
+//                aspectRatio, 100% reliable portrait/wide framing)
+//
+// Note: Imagen 3 / Imagen 3 Fast (`imagen-3.0-*`) return 404 on the current
+// v1beta API for this project, so they are intentionally excluded. Only
+// Imagen 4 is enabled from the Imagen family.
 export const IMAGE_MODELS = [
-  // ── Nano Banana family ───────────────────────────────────────────────────
-  { id: 'gemini-2.5-flash-image',        label: 'Nano Banana · 2.5 Flash' },
-  { id: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2 · 3.1 Flash' },
-  { id: 'gemini-3-pro-image-preview',    label: 'Nano Banana Pro · 3 Pro' },
-  // ── Imagen family ────────────────────────────────────────────────────────
-  { id: 'imagen-4.0-generate-001',       label: 'Imagen 4' },
-  { id: 'imagen-3.0-generate-002',       label: 'Imagen 3' },
-  { id: 'imagen-3.0-fast-generate-001',  label: 'Imagen 3 Fast' },
+  { id: 'gemini-3.1-flash-image-preview', label: 'Draft · Nano Banana 2 · 3.1 Flash' },
+  { id: 'gemini-3-pro-image-preview',     label: 'Standard · Nano Banana Pro · 3 Pro' },
+  { id: 'imagen-4.0-generate-001',        label: 'Hero · Imagen 4' },
 ];
 
 // ── Core generate function ───────────────────────────────────────────────────
@@ -81,12 +82,22 @@ export const ART_FORMATS = [
 
 export type ArtFormatId = typeof ART_FORMATS[number]['id'];
 
-/** Human-readable aspect ratio hints injected into the prompt for Gemini models,
- *  which don't support an explicit aspectRatio API field. */
+/** Strong aspect-ratio instructions injected into the prompt for Gemini models,
+ *  which don't support an explicit aspectRatio API field.
+ *  Phrased as hard constraints (and repeated as a prefix) because the model
+ *  treats hints as suggestions otherwise. */
 const ASPECT_RATIO_HINT: Record<ArtFormatId, string> = {
-  '1:1':  'Compose the image as a perfect square (1:1 aspect ratio).',
-  '3:4':  'Compose the image in portrait orientation (3:4 aspect ratio, taller than wide).',
-  '16:9': 'Compose the image in landscape/widescreen orientation (16:9 aspect ratio, wider than tall).',
+  '1:1':  'CRITICAL OUTPUT REQUIREMENT: The final image MUST be a perfect SQUARE (1:1 aspect ratio, equal width and height). Do not output portrait or landscape — only square.',
+  '3:4':  'CRITICAL OUTPUT REQUIREMENT: The final image MUST be VERTICAL / PORTRAIT (3:4 aspect ratio, clearly taller than wide). The composition must fit a tall vertical frame. Do NOT output a square or landscape image — only portrait/vertical.',
+  '16:9': 'CRITICAL OUTPUT REQUIREMENT: The final image MUST be WIDE / LANDSCAPE (16:9 aspect ratio, significantly wider than tall). The composition must fit a wide horizontal frame. Do NOT output a square or portrait image — only wide/landscape.',
+};
+
+/** Short prefix tag that prepends every prompt — Gemini respects framing
+ *  declarations placed at the very start more reliably than mid-prompt. */
+const ASPECT_RATIO_PREFIX: Record<ArtFormatId, string> = {
+  '1:1':  '[FORMAT: SQUARE 1:1] ',
+  '3:4':  '[FORMAT: VERTICAL PORTRAIT 3:4 — image MUST be taller than wide] ',
+  '16:9': '[FORMAT: WIDE LANDSCAPE 16:9 — image MUST be wider than tall] ',
 };
 
 export async function generateImage(
@@ -124,14 +135,23 @@ export async function generateImage(
         for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
         return btoa(bin);
       } else {
-        // Gemini native image gen: inject aspect ratio hint into the prompt text
-        // since imageGenerationConfig.aspectRatio is not reliably supported.
-        const full = `${base} ${ASPECT_RATIO_HINT[aspectRatio]} ${noText}`;
+        // Gemini native image gen: aspect ratio is injected as TEXT into the
+        // prompt — both as an opening prefix tag and as a strong closing
+        // constraint — since `aspectRatio` config isn't reliably honored by
+        // the multimodal Gemini image path.
+        const full = `${ASPECT_RATIO_PREFIX[aspectRatio]}${base} ${ASPECT_RATIO_HINT[aspectRatio]} ${noText}`;
         const res = await ai.models.generateContent({
           model: modelId,
           contents: [{ role: 'user', parts: [{ text: full }] }],
+          // Newer Gemini image-gen models accept imageConfig.aspectRatio;
+          // older ones ignore it. Pass it anyway — harmless when unsupported,
+          // helpful when supported.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          config: { responseModalities: ['IMAGE'] as any },
+          config: {
+            responseModalities: ['IMAGE'] as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            imageConfig: { aspectRatio } as any,
+          },
         });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const part = (res.candidates?.[0]?.content?.parts ?? []).find((p: any) => p.inlineData);

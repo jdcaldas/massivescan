@@ -98,7 +98,7 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   defaultLanguage: 'English',
   defaultModel: 'gemini-2.5-flash',
-  defaultImageModel: 'gemini-2.5-flash-image',
+  defaultImageModel: 'gemini-3.1-flash-image-preview',
   autoAdaptTheme: true,
   defaultTranslateTo: 'Portuguese',
   groupCount: 7,

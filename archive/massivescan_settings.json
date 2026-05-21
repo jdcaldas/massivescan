@@ -1,0 +1,8 @@
+{
+  "defaultLanguage": "Portuguese",
+  "defaultModel": "gemini-2.5-flash",
+  "defaultImageModel": "gemini-3.1-flash-image-preview",
+  "autoAdaptTheme": true,
+  "defaultTranslateTo": "Portuguese",
+  "groupCount": 7
+}

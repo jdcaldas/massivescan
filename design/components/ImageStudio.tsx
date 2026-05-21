@@ -3,7 +3,7 @@ import type { DesignStructure, RecycleBinEntry } from '../types';
 import { generateImage, IMAGE_STYLES, IMAGE_MODELS, ART_FORMATS, type ArtFormatId } from '../services/imageGenService';
 import {
   SparklesIcon, StarIcon, ChevronDownIcon, ChevronUpIcon,
-  SunIcon, MoonIcon, SettingsIcon, RefreshIcon, GridIcon, ListIcon, ChartBarIcon, PencilIcon, TrashIcon,
+  SunIcon, MoonIcon, SettingsIcon, RefreshIcon, GridIcon, ListIcon, ChartBarIcon, PencilIcon, TrashIcon, DownloadIcon,
 } from './icons';
 import { recordUsage } from '../services/usageService';
 import UsageDashboard from './UsageDashboard';
@@ -73,12 +73,15 @@ interface ImageSlotProps {
 }
 
 // ── No-pick placeholder ─────────────────────────────────────────────────────
-const NoPick: React.FC<{ width: number; label?: string; color?: string }> = ({ width, label, color = '#fbbf24' }) => (
+const NoPick: React.FC<{ width: number; label?: string; color?: string; aspectRatio?: string }> = ({ width, label, color = '#fbbf24', aspectRatio = '1/1' }) => (
   <div
     className="overflow-hidden flex-shrink-0 border-2 border-dashed flex flex-col"
     style={{ width, borderRadius: 1, borderColor: `${color}80` }}
   >
-    <div className="aspect-square w-full bg-brand-bg/50 flex flex-col items-center justify-center gap-1.5">
+    <div
+      className="w-full bg-brand-bg/50 flex flex-col items-center justify-center gap-1.5"
+      style={{ aspectRatio }}
+    >
       <StarIcon className="w-4 h-4" style={{ color: `${color}60` }} />
       <span className="text-[7px] font-black uppercase tracking-widest text-brand-subtle/40 text-center px-2 leading-tight">
         no pick yet
@@ -680,6 +683,66 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     setIsBinOpen(true);
   }, []);
 
+  // ── Bulk download ─────────────────────────────────────────────────────────
+  // Downloads every image with content as individual JPEG files. Naming:
+  //   01-yellow-cover-1.jpg  (group cover)
+  //   01-yellow-sub-01-virgin-queens-ascent-1.jpg  (subgroup front)
+  const [downloadProgress, setDownloadProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const downloadAllImages = useCallback(async () => {
+    const slug = (s: string) =>
+      (s || 'untitled').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
+
+    // Collect every image with content from the current structure
+    const items: { base64: string; filename: string }[] = [];
+    const s = structureRef.current;
+    s.groups.forEach((group, gi) => {
+      const gIdx = String(gi + 1).padStart(2, '0');
+      const gSlug = slug(group.title);
+      // Covers
+      group.imagePrompts.forEach((p, pi) => {
+        if (p.base64Image) items.push({
+          base64: p.base64Image,
+          filename: `${gIdx}-${gSlug}-cover-${pi + 1}.jpg`,
+        });
+      });
+      // Subgroup fronts
+      group.subgroups.forEach((sg, si) => {
+        const sIdx = String(si + 1).padStart(2, '0');
+        const sgSlug = slug(sg.title);
+        sg.imagePrompts.forEach((p, pi) => {
+          if (p.base64Image) items.push({
+            base64: p.base64Image,
+            filename: `${gIdx}-${gSlug}-sub-${sIdx}-${sgSlug}-${pi + 1}.jpg`,
+          });
+        });
+      });
+    });
+
+    if (items.length === 0) return;
+    setDownloadProgress({ done: 0, total: items.length });
+
+    // Trigger downloads sequentially with a small delay so the browser
+    // doesn't squash them all together (and so the "allow multiple downloads"
+    // prompt fires only once)
+    for (let i = 0; i < items.length; i++) {
+      const { base64, filename } = items[i];
+      const link = document.createElement('a');
+      link.href = `data:image/jpeg;base64,${base64}`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setDownloadProgress({ done: i + 1, total: items.length });
+      await new Promise(resolve => setTimeout(resolve, 120));
+    }
+
+    // Clear progress after a short delay so the user sees the final count
+    setTimeout(() => setDownloadProgress(null), 1500);
+  }, []);
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -711,6 +774,32 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
           {/* Right zone — utilities only */}
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+
+            {/* Download all images */}
+            {(() => {
+              const totalReady =
+                structure.groups.reduce((n, g) =>
+                  n + g.imagePrompts.filter(p => p.base64Image).length
+                  + g.subgroups.reduce((m, sg) => m + sg.imagePrompts.filter(p => p.base64Image).length, 0)
+                , 0);
+              const isDownloading = downloadProgress !== null;
+              return (
+                <button
+                  onClick={downloadAllImages}
+                  disabled={totalReady === 0 || isDownloading}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 border-2 border-black/15 text-[10px] font-black uppercase tracking-widest text-brand-subtle hover:text-brand-text hover:border-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ borderRadius: 1 }}
+                  title={isDownloading
+                    ? `Downloading ${downloadProgress!.done} / ${downloadProgress!.total}…`
+                    : `Download all ${totalReady} images individually`}
+                >
+                  <DownloadIcon className="w-3.5 h-3.5" />
+                  {isDownloading
+                    ? <span className="tabular-nums">{downloadProgress!.done}/{downloadProgress!.total}</span>
+                    : <>Download <span className="tabular-nums">{totalReady}</span></>}
+                </button>
+              );
+            })()}
 
             {/* Recycle Bin button (always visible) */}
             {(() => {
@@ -1104,7 +1193,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                             style={{ width: gridZoom, boxShadow: isFav ? '2px 2px 0 0 #fbbf24' : '2px 2px 0 0 #000', borderColor: isFav ? '#fbbf24' : undefined }}
                           >
                             <div className="h-0.5 w-full" style={{ backgroundColor: color }} />
-                            <div className="relative aspect-square w-full bg-brand-bg overflow-hidden">
+                            <div className="relative w-full bg-brand-bg overflow-hidden" style={{ aspectRatio: selectedFormat.replace(':', '/') }}>
                               {scenario.base64Image ? (
                                 <img
                                   src={`data:image/jpeg;base64,${scenario.base64Image}`}
@@ -1171,7 +1260,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                         );
                       })}
                       {showStarredOnly && group.favoriteImagePromptIndex == null && (
-                        <NoPick width={gridZoom} label="Cover" color={color} />
+                        <NoPick width={gridZoom} label="Cover" color={color} aspectRatio={selectedFormat.replace(':', '/')} />
                       )}
                       </div>
                     </div>
@@ -1201,7 +1290,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                 style={{ width: gridZoom, boxShadow: '2px 2px 0 0 #000', opacity: hasFav ? 1 : 0.4 }}
                               >
                                 <div className="h-0.5 w-full bg-black/10 dark:bg-brand-primary/20" />
-                                <div className="relative aspect-square w-full bg-brand-bg overflow-hidden">
+                                <div className="relative w-full bg-brand-bg overflow-hidden" style={{ aspectRatio: selectedFormat.replace(':', '/') }}>
                                   {imgS.base64Image ? (
                                     <img
                                       src={`data:image/jpeg;base64,${imgS.base64Image}`}
@@ -1272,7 +1361,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                             );
                           })}
                           {showStarredOnly && sg.favoriteImagePromptIndex == null && (
-                            <NoPick width={gridZoom} color={color} />
+                            <NoPick width={gridZoom} color={color} aspectRatio={selectedFormat.replace(':', '/')} />
                           )}
                           </div>
                         </div>

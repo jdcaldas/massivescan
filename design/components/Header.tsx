@@ -301,15 +301,17 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
-            {/* Model selector row — shown when content is ready */}
-            {canExport && availableModels && onSelectModel && selectedModel && (
-              <div className="mt-3 flex items-center gap-4">
+            {/* Model selector row — always shown when models are available,
+                so the user can see/change the AI model before generating. */}
+            {availableModels && onSelectModel && selectedModel && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-brand-subtle">AI Model</span>
                 <select
                   value={selectedModel}
                   onChange={e => onSelectModel(e.target.value)}
                   disabled={isGenerating}
                   className="neo-input bg-brand-bg text-xs font-black text-brand-text outline-none cursor-pointer px-3 py-2.5 flex-shrink-0 disabled:opacity-40"
-                  title="AI Model"
+                  title="AI Model used for text generation (concepts, groups, subgroups)"
                 >
                   {availableModels.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
