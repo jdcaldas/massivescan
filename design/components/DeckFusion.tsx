@@ -71,18 +71,20 @@ interface GroupedCard { front: MergedQRCode; back?: MergedQRCode }
 
 // Filter tab definitions — colour-coded per tier / group
 const PREVIEW_FILTERS: { key: string; label: string; bg: string; fg: string }[] = [
-  { key: 'all',     label: 'All',       bg: '#1A1A1A', fg: '#FFFFFF' },
-  { key: 'yellow',  label: 'Yellow',    bg: '#FDE68A', fg: '#1A1A1A' },
-  { key: 'green',   label: 'Green',     bg: '#86EFAC', fg: '#1A1A1A' },
-  { key: 'blue',    label: 'Blue',      bg: '#7DD3FC', fg: '#1A1A1A' },
-  { key: 'magenta', label: 'Magenta',   bg: '#F0ABFC', fg: '#1A1A1A' },
-  { key: 'powerup', label: 'Power-ups', bg: '#C4B5FD', fg: '#1A1A1A' },
-  { key: 'utility', label: 'Utility',   bg: '#4B5563', fg: '#FFFFFF' },
+  { key: 'all',       label: 'All',        bg: '#1A1A1A', fg: '#FFFFFF' },
+  { key: 'yellow',    label: 'Yellow',     bg: '#FDE68A', fg: '#1A1A1A' },
+  { key: 'green',     label: 'Green',      bg: '#86EFAC', fg: '#1A1A1A' },
+  { key: 'blue',      label: 'Blue',       bg: '#7DD3FC', fg: '#1A1A1A' },
+  { key: 'magenta',   label: 'Magenta',    bg: '#F0ABFC', fg: '#1A1A1A' },
+  { key: 'powerup',   label: 'Power-ups',  bg: '#C4B5FD', fg: '#1A1A1A' },
+  { key: 'utility',   label: 'Utility',    bg: '#4B5563', fg: '#FFFFFF' },
+  { key: 'activator', label: 'Activators', bg: '#FF4F6D', fg: '#FFFFFF' },
 ];
 
 const GAME_CARD_TYPES = new Set(['game_card']);
 const POWERUP_TYPES   = new Set(['power_up']);
-const UTILITY_TYPES   = new Set(['promo_video', 'sponsor', 'instructions', 'game_activator']);
+const UTILITY_TYPES   = new Set(['promo_video', 'sponsor', 'instructions']);
+const ACTIVATOR_TYPES = new Set(['game_activator']);
 
 const cardMatchesFilter = (card: GroupedCard, filter: string): boolean => {
   if (filter === 'all') return true;
@@ -90,8 +92,9 @@ const cardMatchesFilter = (card: GroupedCard, filter: string): boolean => {
   const type = card.front.type;
   if (filter === 'yellow'  || filter === 'green' || filter === 'blue' || filter === 'magenta')
     return GAME_CARD_TYPES.has(type) && col === filter;
-  if (filter === 'powerup') return POWERUP_TYPES.has(type);
-  if (filter === 'utility') return UTILITY_TYPES.has(type);
+  if (filter === 'powerup')   return POWERUP_TYPES.has(type);
+  if (filter === 'utility')   return UTILITY_TYPES.has(type);
+  if (filter === 'activator') return ACTIVATOR_TYPES.has(type);
   return true;
 };
 
@@ -114,14 +117,17 @@ const CardPreviewModal: React.FC<{ deck: MergedDeck; theme: string; onClose: () 
       .filter(qr => qr.type !== 'game_card_back')
       .map(qr => {
         // Resolve the back lookup key:
-        //  • game_card  → use the card's color (yellow/green/blue/magenta)
-        //  • power_up   → use synthetic key '__powerup'
-        //  • utility    → use synthetic key '__utility'
+        //  • game_card       → use the card's color (yellow/green/blue/magenta)
+        //  • power_up        → '__powerup'
+        //  • game_activator  → '__activator'
+        //  • utility (other) → '__utility'
         let backKey: string;
         if (qr.type === 'game_card') {
           backKey = (qr.color ?? qr.card_color ?? '').toLowerCase();
         } else if (qr.type === 'power_up') {
           backKey = '__powerup';
+        } else if (qr.type === 'game_activator') {
+          backKey = '__activator';
         } else {
           backKey = '__utility';
         }
@@ -332,11 +338,11 @@ const CardPreviewModal: React.FC<{ deck: MergedDeck; theme: string; onClose: () 
 // ── Main component ────────────────────────────────────────────────────────────
 
 // Fixed color sequence — must match GroupCard.tsx (deck tier order):
-//   01 Yellow → 02 Green → 03 Blue → 04 Magenta → 05 Power-ups (violet) → 06 Utility (charcoal)
-const CARD_COLORS = ['#FDE68A', '#86EFAC', '#7DD3FC', '#F0ABFC', '#C4B5FD', '#4B5563'];
+//   01 Yellow → 02 Green → 03 Blue → 04 Magenta → 05 Power-ups → 06 Utility → 07 Activators
+const CARD_COLORS = ['#FDE68A', '#86EFAC', '#7DD3FC', '#F0ABFC', '#C4B5FD', '#4B5563', '#FF4F6D'];
 // Auto-assign for designs that haven't been tagged yet — matches the
-// design-phase order: Yellow, Green, Blue, Magenta, Power-ups, Utility.
-const AUTO_GROUP_TYPES = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D', 'Grupo Power-ups', 'Grupo Extra/Utilitários'];
+// design-phase order: Yellow, Green, Blue, Magenta, Power-ups, Utility, Activators.
+const AUTO_GROUP_TYPES = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D', 'Grupo Power-ups', 'Grupo Extra/Utilitários', 'Grupo Activators'];
 
 const DeckFusion: React.FC<DeckFusionProps> = ({
   designStructure, theme, projectId, onBack, onSave,
@@ -350,6 +356,27 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
       s.groups.forEach((g, i) => { if (AUTO_GROUP_TYPES[i]) g.groupType = AUTO_GROUP_TYPES[i]; });
       autoAssignedRef.current = true;
     }
+
+    // Migration: old worlds had 6 groups (no Activators). If the structure
+    // is missing 'Grupo Activators', auto-inject an empty 7th group so the
+    // merger and studios all see a consistent 7-group taxonomy. User can
+    // generate the cover image later via Image Studio.
+    if (!s.groups.some(g => g.groupType === 'Grupo Activators')) {
+      const newGroupId = `auto-activators-${Date.now()}`;
+      s.groups.push({
+        id: newGroupId,
+        title: '',
+        description: '',
+        mood: '',
+        groupType: 'Grupo Activators',
+        imagePrompts: [],
+        subgroups: [
+          { id: `${newGroupId}-sub-0`, title: '', description: '', mood: '', imagePrompts: [] },
+        ],
+      } as any);
+      autoAssignedRef.current = true;
+    }
+
     return s;
   });
   const structureRef = useRef(structure);
@@ -362,6 +389,14 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
       autoAssignedRef.current = false;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reassign a single group's deck role
+  const handleGroupTypeChange = useCallback((gi: number, newGroupType: string) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    s.groups[gi].groupType = newGroupType || undefined;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
 
   const [deckList, setDeckList] = useState<DeckFileMeta[]>([]);
   const [isLoadingDecks, setIsLoadingDecks] = useState(false);

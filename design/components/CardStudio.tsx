@@ -15,6 +15,7 @@ const CARD_COLORS = [
   '#F0ABFC', // 04: Magenta
   '#C4B5FD', // 05: Power-ups
   '#4B5563', // 06: Utility
+  '#FF4F6D', // 07: Activators (brand pink)
 ];
 
 // ── Group type metadata ───────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ const GROUP_TYPE_LABEL: Record<string, string> = {
   'Grupo D':                 'Group 4 · Magenta',
   'Grupo Power-ups':         'Power-ups',
   'Grupo Extra/Utilitários': 'Utility',
+  'Grupo Activators':        'Activators',
 };
 
 // Full card config is available for these types only

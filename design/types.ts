@@ -112,6 +112,23 @@ export interface LogEntry {
   status: 'Pending' | 'Success' | 'Error';
 }
 
+// ── Recycle Bin ────────────────────────────────────────────────────────────
+// Holds images that were discarded (regenerated/cleared/deleted) so they can
+// be adopted into any other slot later. Storage: projects/<pid>/design/recycle_bin.json
+
+export interface RecycleBinEntry {
+  id: string;                       // unique entry id
+  base64Image: string;              // the image itself
+  prompt: string;                   // original prompt used to generate it
+  style?: string;                   // style id (low-poly, photorealistic, etc.)
+  format?: string;                  // square / portrait / wide
+  sourceGroupTitle?: string;        // where it came from
+  sourceSubgroupTitle?: string;     // (empty if it was a group cover)
+  sourceWorldId?: string;
+  discardedAt: string;              // ISO timestamp
+  reason: 'regenerate' | 'clear' | 'delete' | 'regenerate-all' | 'manual';
+}
+
 // ── Deck Fusion types ──────────────────────────────────────────────────────
 
 export interface DeckDetails {

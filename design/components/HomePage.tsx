@@ -344,7 +344,7 @@ const HomePage: React.FC<HomePageProps> = ({
                               )
                             )}
                             <button onClick={() => onLoadWorld(design)} className="neo-btn ml-2 px-4 py-2 text-sm font-black bg-brand-text text-brand-surface whitespace-nowrap" style={{ boxShadow: '3px 3px 0 0 #000' }}>
-                              Open →
+                              Open Concept →
                             </button>
                           </div>
                         </div>

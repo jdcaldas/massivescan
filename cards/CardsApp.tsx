@@ -22,7 +22,11 @@ const INITIAL_DECK_CONFIG: DeckConfig = {
   "qrcodes": []
 };
 
-const UTILITY_TYPES: QRCodeType[] = ['promo_video', 'sponsor', 'instructions', 'game_activator'];
+const UTILITY_TYPES:   QRCodeType[] = ['promo_video', 'sponsor', 'instructions'];
+const ACTIVATOR_TYPES: QRCodeType[] = ['game_activator'];
+// `UTILITY_FORM_TYPES` is the UI-shape bucket used by QRCodesManager
+// (utility + activator share the same form layout — no color, no letter).
+const UTILITY_FORM_TYPES: QRCodeType[] = [...UTILITY_TYPES, ...ACTIVATOR_TYPES];
 
 const enrichQRCodes = (qrcodes: (Omit<QRCode, 'number' | 'color' | 'letter' | 'stars'> | QRCode)[]): QRCode[] => {
     const colors: Array<QRCodeColor> = ['yellow', 'green', 'blue', 'magenta'];
@@ -30,6 +34,7 @@ const enrichQRCodes = (qrcodes: (Omit<QRCode, 'number' | 'color' | 'letter' | 's
     const cardQRCodes = qrcodes.filter(qr => qr.type === 'game_card');
     const powerUpQRCodes = qrcodes.filter(qr => qr.type === 'power_up');
     const utilityQRCodes = qrcodes.filter(qr => UTILITY_TYPES.includes(qr.type as QRCodeType));
+    const activatorQRCodes = qrcodes.filter(qr => ACTIVATOR_TYPES.includes(qr.type as QRCodeType));
 
     const numGameCards = cardQRCodes.length;
     const alphabetSize = (numGameCards > 0 && numGameCards % 2 === 0) ? numGameCards / 2 : 26;
@@ -82,7 +87,17 @@ const enrichQRCodes = (qrcodes: (Omit<QRCode, 'number' | 'color' | 'letter' | 's
         return base;
     });
 
-    return [...enrichedCardQRCodes, ...enrichedPowerUpQRCodes, ...enrichedUtilityQRCodes];
+    const enrichedActivatorQRCodes: QRCode[] = activatorQRCodes.map(qr => {
+        const { number, color, letter, stars, suit, rank, card_color, ...rest } = qr as QRCode;
+        const base = { ...rest } as QRCode;
+        if (!base.pathId) base.pathId = generateRandomKey(6);
+        if (!base.key) base.key = generateRandomKey();
+        base.card_color = 'light grey';
+        base.stars = 0;
+        return base;
+    });
+
+    return [...enrichedCardQRCodes, ...enrichedPowerUpQRCodes, ...enrichedUtilityQRCodes, ...enrichedActivatorQRCodes];
 };
 
 interface CardsAppProps {
@@ -246,6 +261,7 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
     qrCodesCards: true,
     qrCodesPowerUps: true,
     qrCodesUtility: true,
+    qrCodesActivator: true,
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -272,28 +288,45 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
   const handleCardQRCodesChange = (newCardQRs: QRCode[]) => {
     const powerUpQRs = deckConfig.qrcodes.filter(qr => qr.type === 'power_up');
     const utilityQRs = deckConfig.qrcodes.filter(qr => UTILITY_TYPES.includes(qr.type));
-    const newlyTypedPowerUps = newCardQRs.filter(qr => qr.type === 'power_up');
-    const newlyTypedUtility = newCardQRs.filter(qr => UTILITY_TYPES.includes(qr.type));
+    const activatorQRs = deckConfig.qrcodes.filter(qr => ACTIVATOR_TYPES.includes(qr.type));
+    const newlyTypedPowerUps  = newCardQRs.filter(qr => qr.type === 'power_up');
+    const newlyTypedUtility   = newCardQRs.filter(qr => UTILITY_TYPES.includes(qr.type));
+    const newlyTypedActivator = newCardQRs.filter(qr => ACTIVATOR_TYPES.includes(qr.type));
     const remainingCardQRs = newCardQRs.filter(qr => qr.type === 'game_card');
-    updateDeckConfig({ qrcodes: [...remainingCardQRs, ...powerUpQRs, ...newlyTypedPowerUps, ...utilityQRs, ...newlyTypedUtility] });
+    updateDeckConfig({ qrcodes: [...remainingCardQRs, ...powerUpQRs, ...newlyTypedPowerUps, ...utilityQRs, ...newlyTypedUtility, ...activatorQRs, ...newlyTypedActivator] });
   };
 
   const handlePowerUpQRCodesChange = (newPowerUpQRs: QRCode[]) => {
     const cardQRs = deckConfig.qrcodes.filter(qr => qr.type === 'game_card');
     const utilityQRs = deckConfig.qrcodes.filter(qr => UTILITY_TYPES.includes(qr.type));
-    const newlyTypedCards = newPowerUpQRs.filter(qr => qr.type === 'game_card');
-    const newlyTypedUtility = newPowerUpQRs.filter(qr => UTILITY_TYPES.includes(qr.type));
+    const activatorQRs = deckConfig.qrcodes.filter(qr => ACTIVATOR_TYPES.includes(qr.type));
+    const newlyTypedCards     = newPowerUpQRs.filter(qr => qr.type === 'game_card');
+    const newlyTypedUtility   = newPowerUpQRs.filter(qr => UTILITY_TYPES.includes(qr.type));
+    const newlyTypedActivator = newPowerUpQRs.filter(qr => ACTIVATOR_TYPES.includes(qr.type));
     const remainingPowerUpQRs = newPowerUpQRs.filter(qr => qr.type === 'power_up');
-    updateDeckConfig({ qrcodes: [...cardQRs, ...newlyTypedCards, ...remainingPowerUpQRs, ...utilityQRs, ...newlyTypedUtility] });
+    updateDeckConfig({ qrcodes: [...cardQRs, ...newlyTypedCards, ...remainingPowerUpQRs, ...utilityQRs, ...newlyTypedUtility, ...activatorQRs, ...newlyTypedActivator] });
   };
 
   const handleUtilityQRCodesChange = (newUtilityQRs: QRCode[]) => {
     const cardQRs = deckConfig.qrcodes.filter(qr => qr.type === 'game_card');
     const powerUpQRs = deckConfig.qrcodes.filter(qr => qr.type === 'power_up');
-    const newlyTypedCards = newUtilityQRs.filter(qr => qr.type === 'game_card');
-    const newlyTypedPowerUps = newUtilityQRs.filter(qr => qr.type === 'power_up');
+    const activatorQRs = deckConfig.qrcodes.filter(qr => ACTIVATOR_TYPES.includes(qr.type));
+    const newlyTypedCards     = newUtilityQRs.filter(qr => qr.type === 'game_card');
+    const newlyTypedPowerUps  = newUtilityQRs.filter(qr => qr.type === 'power_up');
+    const newlyTypedActivator = newUtilityQRs.filter(qr => ACTIVATOR_TYPES.includes(qr.type));
     const remainingUtilityQRs = newUtilityQRs.filter(qr => UTILITY_TYPES.includes(qr.type));
-    updateDeckConfig({ qrcodes: [...cardQRs, ...newlyTypedCards, ...powerUpQRs, ...newlyTypedPowerUps, ...remainingUtilityQRs] });
+    updateDeckConfig({ qrcodes: [...cardQRs, ...newlyTypedCards, ...powerUpQRs, ...newlyTypedPowerUps, ...remainingUtilityQRs, ...activatorQRs, ...newlyTypedActivator] });
+  };
+
+  const handleActivatorQRCodesChange = (newActivatorQRs: QRCode[]) => {
+    const cardQRs = deckConfig.qrcodes.filter(qr => qr.type === 'game_card');
+    const powerUpQRs = deckConfig.qrcodes.filter(qr => qr.type === 'power_up');
+    const utilityQRs = deckConfig.qrcodes.filter(qr => UTILITY_TYPES.includes(qr.type));
+    const newlyTypedCards    = newActivatorQRs.filter(qr => qr.type === 'game_card');
+    const newlyTypedPowerUps = newActivatorQRs.filter(qr => qr.type === 'power_up');
+    const newlyTypedUtility  = newActivatorQRs.filter(qr => UTILITY_TYPES.includes(qr.type));
+    const remainingActivatorQRs = newActivatorQRs.filter(qr => ACTIVATOR_TYPES.includes(qr.type));
+    updateDeckConfig({ qrcodes: [...cardQRs, ...newlyTypedCards, ...powerUpQRs, ...newlyTypedPowerUps, ...utilityQRs, ...newlyTypedUtility, ...remainingActivatorQRs] });
   };
 
   const addQRCode = (type: QRCode['type']) => {
@@ -349,18 +382,21 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
       id: `power_up-${String(index + 1).padStart(3, '0')}`, pathId: generateRandomKey(6), key: generateRandomKey(), type: 'power_up', card_color: (index < 4) ? 'black' : 'white',
     }));
     const utilityQRCodes: Omit<QRCode, 'number' | 'color' | 'letter' | 'stars'>[] = [
-      { id: 'promo_video-001', pathId: generateRandomKey(6), key: generateRandomKey(), type: 'promo_video' },
-      { id: 'sponsor-001',    pathId: generateRandomKey(6), key: generateRandomKey(), type: 'sponsor' },
-      { id: 'sponsor-002',    pathId: generateRandomKey(6), key: generateRandomKey(), type: 'sponsor' },
+      { id: 'promo_video-001',  pathId: generateRandomKey(6), key: generateRandomKey(), type: 'promo_video' },
+      { id: 'sponsor-001',      pathId: generateRandomKey(6), key: generateRandomKey(), type: 'sponsor' },
+      { id: 'sponsor-002',      pathId: generateRandomKey(6), key: generateRandomKey(), type: 'sponsor' },
       { id: 'instructions-001', pathId: generateRandomKey(6), key: generateRandomKey(), type: 'instructions' },
+    ];
+    const activatorQRCodes: Omit<QRCode, 'number' | 'color' | 'letter' | 'stars'>[] = [
       { id: 'game_activator-001', pathId: generateRandomKey(6), key: generateRandomKey(), type: 'game_activator' },
     ];
-    updateDeckConfig({ deck_details: { ...deckConfig.deck_details, deck_name: "ESSENTIAL PLUS DECK", deck_description: "An enhanced 36-card deck (28 cards + 8 power-ups) with unique identifiers (A-Z, *, #) and a strategic star system.", version: 1 }, qrcodes: [...themedCards, ...powerUps, ...utilityQRCodes] });
+    updateDeckConfig({ deck_details: { ...deckConfig.deck_details, deck_name: "ESSENTIAL PLUS DECK", deck_description: "An enhanced deck: 28 cards (4×7) + 8 power-ups + 4 utility + 1 activator = 41 QR codes total.", version: 1 }, qrcodes: [...themedCards, ...powerUps, ...utilityQRCodes, ...activatorQRCodes] });
   };
 
   const cardQRCodes = deckConfig.qrcodes.filter(qr => qr.type === 'game_card');
   const powerUpQRCodes = deckConfig.qrcodes.filter(qr => qr.type === 'power_up');
   const utilityQRCodes = deckConfig.qrcodes.filter(qr => UTILITY_TYPES.includes(qr.type));
+  const activatorQRCodes = deckConfig.qrcodes.filter(qr => ACTIVATOR_TYPES.includes(qr.type));
   const baseUrl = deckConfig.deck_details.baseUrl || "https://www.massivescan.com/qrc/";
   const utilityBaseUrl = deckConfig.deck_details.utilityBaseUrl || "";
   const deckId = deckConfig.deck_details.deck_id || "0001";
@@ -377,6 +413,8 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
   });
   const summaryUtilityCounts: Record<string, number> = {};
   utilityQRCodes.forEach(qr => { summaryUtilityCounts[qr.type] = (summaryUtilityCounts[qr.type] ?? 0) + 1; });
+  const summaryActivatorCounts: Record<string, number> = {};
+  activatorQRCodes.forEach(qr => { summaryActivatorCounts[qr.type] = (summaryActivatorCounts[qr.type] ?? 0) + 1; });
   // Unified deck type/tier visuals — see cards/deckTypeMeta.ts
   const colorMeta = TIER_META;
 
@@ -429,10 +467,11 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
             {/* Stats chips */}
             <div className="hidden md:flex items-center gap-1.5">
               {[
-                { label: 'Cards',  val: cardQRCodes.length,    bg: '#FFE500' },
-                { label: 'P-Ups',  val: powerUpQRCodes.length, bg: '#C8B6FF' },
-                { label: 'Util',   val: utilityQRCodes.length, bg: '#6EE7B7' },
-                { label: 'Total',  val: totalCards,            bg: '#1A1A1A', light: true },
+                { label: 'Cards',  val: cardQRCodes.length,      bg: '#FFE500' },
+                { label: 'P-Ups',  val: powerUpQRCodes.length,   bg: '#C8B6FF' },
+                { label: 'Util',   val: utilityQRCodes.length,   bg: '#6EE7B7' },
+                { label: 'Act',    val: activatorQRCodes.length, bg: '#FF4F6D' },
+                { label: 'Total',  val: totalCards,              bg: '#1A1A1A', light: true },
               ].map(({ label, val, bg, light }) => (
                 <div
                   key={label}
@@ -490,7 +529,7 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
                     <span style={{ background: '#1A1A1A', color: '#FFFFFF', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '2px 7px' }}>★ Recommended</span>
                   </div>
                   <div style={{ fontWeight: 900, fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#FFFFFF' }}>Essential Plus Deck</div>
-                  <div style={{ fontSize: '0.78rem', color: '#FFFFFF', fontWeight: 600, marginTop: '2px' }}>28 cards (4×7) + 8 power-ups + utility QR codes</div>
+                  <div style={{ fontSize: '0.78rem', color: '#FFFFFF', fontWeight: 600, marginTop: '2px' }}>28 cards (4×7) + 8 power-ups + 4 utility + 1 activator = 41 QR codes</div>
                 </div>
                 <button className="btn-brutal" style={{ padding: '12px 24px', background: '#1A1A1A', color: '#FFFFFF', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }} onClick={generateEssentialPlusDeck}>
                   Generate →
@@ -627,10 +666,11 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
                 {/* Totals row */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {[
-                    { label: GROUP_META.cards.label,    val: cardQRCodes.length,    bg: GROUP_META.cards.bg,    fg: GROUP_META.cards.fg    },
-                    { label: GROUP_META.powerups.label, val: powerUpQRCodes.length, bg: GROUP_META.powerups.bg, fg: GROUP_META.powerups.fg },
-                    { label: GROUP_META.utility.label,  val: utilityQRCodes.length, bg: GROUP_META.utility.bg,  fg: GROUP_META.utility.fg  },
-                    { label: GROUP_META.total.label,    val: totalCards,            bg: GROUP_META.total.bg,    fg: GROUP_META.total.fg    },
+                    { label: GROUP_META.cards.label,     val: cardQRCodes.length,      bg: GROUP_META.cards.bg,     fg: GROUP_META.cards.fg     },
+                    { label: GROUP_META.powerups.label,  val: powerUpQRCodes.length,   bg: GROUP_META.powerups.bg,  fg: GROUP_META.powerups.fg  },
+                    { label: GROUP_META.utility.label,   val: utilityQRCodes.length,   bg: GROUP_META.utility.bg,   fg: GROUP_META.utility.fg   },
+                    { label: GROUP_META.activator.label, val: activatorQRCodes.length, bg: GROUP_META.activator.bg, fg: GROUP_META.activator.fg },
+                    { label: GROUP_META.total.label,     val: totalCards,              bg: GROUP_META.total.bg,     fg: GROUP_META.total.fg     },
                   ].map(({ label, val, bg, fg }) => (
                     <div key={label} style={{ background: bg, border: '2px solid #1A1A1A', padding: '6px 14px', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                       <span style={{ fontWeight: 900, fontSize: '1.5rem', color: fg, lineHeight: 1 }}>{val}</span>
@@ -696,6 +736,24 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
                   </div>
                 )}
 
+                {/* Activator breakdown */}
+                {activatorQRCodes.length > 0 && (
+                  <div>
+                    <span style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9A9A9A', display: 'block', marginBottom: '6px' }}>Activator QR Codes</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {Object.entries(summaryActivatorCounts).map(([type, count]) => {
+                        const m = DECK_TYPE_META[type] ?? FALLBACK_TYPE_META;
+                        return (
+                          <div key={type} style={{ background: m.bg, border: '2px solid #1A1A1A', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: 900, fontSize: '1rem', color: m.fg, lineHeight: 1 }}>{count}</span>
+                            <span style={{ fontWeight: 800, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: m.fg }}>{m.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
               </div>
             )}
           </Section>
@@ -708,8 +766,12 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
             <QRCodesManager qrcodes={powerUpQRCodes} onQRCodesChange={handlePowerUpQRCodesChange} onAdd={() => addQRCode('power_up')} baseUrl={baseUrl} deckId={deckId} errorCorrectionLevel={errorCorrectionLevel} />
           </Section>
 
-          <Section title={`QR Codes — Utility [${utilityQRCodes.length}]`} description="QR codes for promos, instructions, sponsors, and game activation." accent="#00D4AA" isCollapsible isOpen={openSections.qrCodesUtility} onToggle={() => toggleSection('qrCodesUtility')}>
+          <Section title={`QR Codes — Utility [${utilityQRCodes.length}]`} description="QR codes for promos, instructions and sponsors." accent="#00D4AA" isCollapsible isOpen={openSections.qrCodesUtility} onToggle={() => toggleSection('qrCodesUtility')}>
             <QRCodesManager qrcodes={utilityQRCodes} onQRCodesChange={handleUtilityQRCodesChange} onAdd={() => addQRCode('promo_video')} baseUrl={utilityBaseUrl} deckId={deckId} errorCorrectionLevel={errorCorrectionLevel} />
+          </Section>
+
+          <Section title={`QR Codes — Activators [${activatorQRCodes.length}]`} description="QR codes that launch / start the game experience." accent="#FF4F6D" isCollapsible isOpen={openSections.qrCodesActivator} onToggle={() => toggleSection('qrCodesActivator')}>
+            <QRCodesManager qrcodes={activatorQRCodes} onQRCodesChange={handleActivatorQRCodesChange} onAdd={() => addQRCode('game_activator')} baseUrl={utilityBaseUrl} deckId={deckId} errorCorrectionLevel={errorCorrectionLevel} />
           </Section>
 
         </main>

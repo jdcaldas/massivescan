@@ -19,7 +19,7 @@ interface GroupCardProps {
 }
 
 // Fixed color sequence — matches the deck's tier system, in order:
-//   01 Yellow → 02 Green → 03 Blue → 04 Magenta → 05 Power-ups → 06 Utility
+//   01 Yellow → 02 Green → 03 Blue → 04 Magenta → 05 Power-ups → 06 Utility → 07 Activators
 const CARD_COLORS = [
   '#FDE68A', // 01: Yellow tier (amber-200)
   '#86EFAC', // 02: Green tier (green-300)
@@ -27,6 +27,7 @@ const CARD_COLORS = [
   '#F0ABFC', // 04: Magenta tier (fuchsia-300)
   '#C4B5FD', // 05: Power-ups (violet-300, special)
   '#4B5563', // 06: Utility (charcoal gray-600, functional/meta)
+  '#FF4F6D', // 07: Activators (brand pink, game launcher)
 ];
 
 const ImageScenarioItem: React.FC<{

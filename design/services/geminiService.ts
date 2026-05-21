@@ -2,10 +2,11 @@ import { GoogleGenAI, Type } from '@google/genai';
 import type { Group, Subgroup, DesignStructure, ImageScenario, TokenUsage } from '../types';
 
 // ── Fixed design-phase structure ─────────────────────────────────────────────
-// The card deck always has this exact shape:
+// The card deck always has this exact shape (7 groups total):
 //   • 4 color tiers × 7 game cards each = 28 game cards (interleaved 1-2-3-4-1-2-3-4…)
 //   • 1 Power-ups group × 8 cards
-//   • 1 Utility group × ~4 cards (instructions, sponsor, etc.)
+//   • 1 Utility group × ~4 cards (instructions, sponsor, promo video)
+//   • 1 Activators group × 1 card (the game-launch activator)
 // Each group's cover image is reused on every card-back in its tier.
 // Each group's subgroups[i] image is the front of one specific card.
 export const DESIGN_PHASE_GROUPS = [
@@ -35,9 +36,14 @@ export const DESIGN_PHASE_GROUPS = [
         subgroupNature: 'Estes 8 subgrupos NÃO são personagens nem locais — são AÇÕES/EVENTOS de jogo que afetam a jogabilidade quando uma carta é jogada. Divida EXATAMENTE em: 4 ações POSITIVAS (vantagens, bónus, eventos sortudos — ex: "O Herói Retorna", "Aliança Inesperada", "Tesouro Descoberto") e 4 ações NEGATIVAS (contratempos, armadilhas, desgraças — ex: "A Traição do General", "A Praga Espalha", "Tempestade Devastadora"). O título deve ser dramático e impactante. A descrição deve explicar o efeito da ação no jogo. O mood deve refletir a energia da ação (triunfante para positivas, sombrio para negativas).',
     },
     {
-        groupType: 'Grupo Extra/Utilitários', color: 'Special', subgroupCount: 5,
-        label: 'Utility — 5 utility cards',
-        subgroupNature: 'Estes 5 subgrupos são CARTAS UTILITÁRIAS do jogo (não narrativas): 1) Instruções/Regras, 2) Patrocinador, 3) Vídeo Promocional, 4) Ativador de Jogo, 5) Outra carta utilitária. Mantenha o carácter funcional e prático.',
+        groupType: 'Grupo Extra/Utilitários', color: 'Special', subgroupCount: 4,
+        label: 'Utility — 4 utility cards',
+        subgroupNature: 'Estes 4 subgrupos são CARTAS UTILITÁRIAS do jogo (não narrativas): 1) Instruções/Regras, 2) Patrocinador, 3) Vídeo Promocional, 4) Outra carta utilitária complementar. Mantenha o carácter funcional e prático.',
+    },
+    {
+        groupType: 'Grupo Activators', color: 'Special', subgroupCount: 1,
+        label: 'Activators — 1 activator card (game launcher)',
+        subgroupNature: 'Este 1 subgrupo é a CARTA ATIVADORA do jogo — o ponto de entrada/lançamento. Não é uma carta narrativa nem utilitária comum: é o "iniciador" que arranca a experiência. O título deve evocar começo/despertar/ativação (ex: "O Despertar", "Início da Jornada", "A Chave"). A descrição deve reflectir o acto de iniciar o jogo. O mood deve ser de promessa/expectativa/abertura.',
     },
 ] as const;
 
@@ -184,9 +190,9 @@ export const generateAll = async (
     let totalIn = 0;
     let totalOut = 0;
 
-    // Fixed structure: 4 color tiers + Power-ups + Utility = 6 groups.
+    // Fixed structure: 4 color tiers + Power-ups + Utility + Activators = 7 groups.
     const groupCount = DESIGN_PHASE_GROUPS.length;
-    const deckGroupsHint = `\n\n      CARD DECK STRUCTURE — the deck has EXACTLY ${groupCount} groups in this order, do NOT change the order or count:\n${DESIGN_PHASE_GROUPS.map((g, i) => `      ${i + 1}. ${g.groupType} — ${g.label}`).join('\n')}\n\n      • Groups 1–4 (Yellow/Green/Blue/Magenta) are progressive thematic tiers — characters, places, factions, or concepts (e.g. chronological eras, difficulty levels, or categories that fit the theme). Each tier's COVER image is shared by all 7 cards in that tier; each subgroup represents ONE specific card. INSIDE EACH TIER, subgroups are ordered by RARITY: subgroup 1 is the legendary 3★ card (most iconic element), subgroup 2 is the rare 2★ card, subgroups 3–7 are the common 1★ cards.\n      • Group 5 (Power-ups) is NOT a thematic tier — it is 8 ACTION/EVENT cards that affect gameplay (4 positive boosts + 4 negative setbacks). The group title/description/mood should reflect "events that shake the world", not a faction or place.\n      • Group 6 (Utility) is 5 functional/utility cards (instructions, sponsor, promo video, game activator, other utility). The group title/description/mood should reflect "game meta / rules / services", not a narrative tier.\n      Generate creative thematic titles/descriptions/moods that match the user's theme, but the GROUP ORDER and IDENTITY (tier vs. action vs. utility) are fixed.`;
+    const deckGroupsHint = `\n\n      CARD DECK STRUCTURE — the deck has EXACTLY ${groupCount} groups in this order, do NOT change the order or count:\n${DESIGN_PHASE_GROUPS.map((g, i) => `      ${i + 1}. ${g.groupType} — ${g.label}`).join('\n')}\n\n      • Groups 1–4 (Yellow/Green/Blue/Magenta) are progressive thematic tiers — characters, places, factions, or concepts (e.g. chronological eras, difficulty levels, or categories that fit the theme). Each tier's COVER image is shared by all 7 cards in that tier; each subgroup represents ONE specific card. INSIDE EACH TIER, subgroups are ordered by RARITY: subgroup 1 is the legendary 3★ card (most iconic element), subgroup 2 is the rare 2★ card, subgroups 3–7 are the common 1★ cards.\n      • Group 5 (Power-ups) is NOT a thematic tier — it is 8 ACTION/EVENT cards that affect gameplay (4 positive boosts + 4 negative setbacks). The group title/description/mood should reflect "events that shake the world", not a faction or place.\n      • Group 6 (Utility) is 4 functional/utility cards (instructions, sponsor, promo video, other utility). The group title/description/mood should reflect "game meta / rules / services", not a narrative tier.\n      • Group 7 (Activators) is 1 ACTIVATOR card — the game-launcher/entry point. Its cover image IS the visual identity of the activator. The group title/description/mood should evoke "launch / unlock / start the game / opening", not a tier or utility service.\n      Generate creative thematic titles/descriptions/moods that match the user's theme, but the GROUP ORDER and IDENTITY (tier vs. action vs. utility vs. activator) are fixed.`;
 
     const trackUsage = (response: any) => {
         const currentIn = response.usageMetadata?.promptTokenCount || 0;
@@ -276,7 +282,7 @@ export const generateAll = async (
 
     if (onProgress) onProgress({ ...currentStructure });
 
-    // 2. Generate Subgroups and Image Prompts for each of the 6 groups sequentially
+    // 2. Generate Subgroups and Image Prompts for each of the 7 groups sequentially
     for (let i = 0; i < currentStructure.groups.length; i++) {
         await delay(1000);
         checkCancelled();

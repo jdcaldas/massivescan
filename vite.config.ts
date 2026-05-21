@@ -407,6 +407,36 @@ function localArchivePlugin() {
             return;
           }
 
+          // ── /api/projects/:pid/recycle-bin ────────────────────────────
+          if (section === 'recycle-bin') {
+            const designDir = path.join(PROJECTS_DIR, pid, 'design');
+            if (!fs.existsSync(designDir)) fs.mkdirSync(designDir, { recursive: true });
+            const binFile = path.join(designDir, 'recycle_bin.json');
+
+            if (req.method === 'GET') {
+              if (!fs.existsSync(binFile)) {
+                res.end(JSON.stringify({ entries: [] }));
+                return;
+              }
+              try {
+                const data = JSON.parse(fs.readFileSync(binFile, 'utf-8'));
+                res.end(JSON.stringify({ entries: data.entries ?? [] }));
+              } catch {
+                res.end(JSON.stringify({ entries: [] }));
+              }
+              return;
+            }
+            if (req.method === 'POST') {
+              const body = JSON.parse(await readBody(req));
+              const entries = Array.isArray(body?.entries) ? body.entries : [];
+              fs.writeFileSync(binFile, JSON.stringify({ entries }, null, 2));
+              res.end(JSON.stringify({ ok: true, count: entries.length }));
+              return;
+            }
+            res.statusCode = 405; res.end(JSON.stringify({ error: 'Method not allowed' }));
+            return;
+          }
+
           res.statusCode = 404; res.end(JSON.stringify({ error: 'Unknown endpoint' }));
         } catch (e) {
           res.statusCode = 500;

@@ -689,6 +689,8 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
           setIsDarkMode={setIsDarkMode}
           onOpenSettings={() => setIsSettingsOpen(true)}
           projectName={projectName}
+          projectId={projectId}
+          activeWorldId={activeWorldId ?? undefined}
         />
         {isSettingsOpen && (
           <SettingsModal

@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import type { DesignStructure } from '../types';
+import type { DesignStructure, RecycleBinEntry } from '../types';
 import { generateImage, IMAGE_STYLES, IMAGE_MODELS, ART_FORMATS, type ArtFormatId } from '../services/imageGenService';
 import {
   SparklesIcon, StarIcon, ChevronDownIcon, ChevronUpIcon,
-  SunIcon, MoonIcon, SettingsIcon, RefreshIcon, GridIcon, ListIcon, ChartBarIcon, PencilIcon,
+  SunIcon, MoonIcon, SettingsIcon, RefreshIcon, GridIcon, ListIcon, ChartBarIcon, PencilIcon, TrashIcon,
 } from './icons';
 import { recordUsage } from '../services/usageService';
 import UsageDashboard from './UsageDashboard';
+import RecycleBinModal from './RecycleBinModal';
+import {
+  loadBin, addToBin, removeFromBin, emptyBin, urgencyFor,
+  BIN_CAP, BIN_WARN_AT, BIN_URGENT_AT,
+} from '../services/recycleBinService';
 
 // Fixed deck tier sequence — must match GroupCard.tsx and deckTypeMeta.ts
 const CARD_COLORS = [
@@ -16,8 +21,9 @@ const CARD_COLORS = [
   '#F0ABFC', // 04: Magenta tier
   '#C4B5FD', // 05: Power-ups (violet)
   '#4B5563', // 06: Utility (charcoal)
+  '#FF4F6D', // 07: Activators (brand pink)
 ];
-const CARD_COLOR_NAMES = ['Yellow', 'Green', 'Blue', 'Magenta', 'Power-ups', 'Utility'];
+const CARD_COLOR_NAMES = ['Yellow', 'Green', 'Blue', 'Magenta', 'Power-ups', 'Utility', 'Activators'];
 
 /** Maps groupType → short technical label shown in brackets next to the creative title. */
 const GROUP_TYPE_LABEL: Record<string, string> = {
@@ -27,6 +33,7 @@ const GROUP_TYPE_LABEL: Record<string, string> = {
   'Grupo D':                 'Group 4 · Magenta',
   'Grupo Power-ups':         'Power-ups',
   'Grupo Extra/Utilitários': 'Utility',
+  'Grupo Activators':        'Activators',
 };
 
 type GenState = 'idle' | 'generating' | 'error';
@@ -42,6 +49,8 @@ interface ImageStudioProps {
   setIsDarkMode: (v: boolean) => void;
   onOpenSettings: () => void;
   projectName?: string;
+  projectId: string;
+  activeWorldId?: string;
 }
 
 // ── Image slot component ─────────────────────────────────────────────────────
@@ -57,6 +66,10 @@ interface ImageSlotProps {
   onZoom?: () => void;
   size?: 'normal' | 'small';
   aspectRatio?: string; // e.g. '1/1', '3/4', '16/9'
+  /** Send the current image to the recycle bin and clear this slot. */
+  onDiscard?: () => void;
+  /** Open the recycle bin in "adopt for this slot" mode. */
+  onPickFromBin?: () => void;
 }
 
 // ── No-pick placeholder ─────────────────────────────────────────────────────
@@ -79,6 +92,7 @@ const NoPick: React.FC<{ width: number; label?: string; color?: string }> = ({ w
 
 const ImageSlot: React.FC<ImageSlotProps> = ({
   base64, prompt, genState, error, isFavorite, onGenerate, onFavorite, onZoom, size = 'normal', aspectRatio = '1/1',
+  onDiscard, onPickFromBin,
 }) => {
   const isSmall = size === 'small';
   const [regenOpen, setRegenOpen] = useState(false);
@@ -161,27 +175,58 @@ const ImageSlot: React.FC<ImageSlotProps> = ({
           <StarIcon isFilled={isFavorite} className={`${isSmall ? 'w-2.5 h-2.5' : 'w-3 h-3'}`} />
           {isFavorite ? 'Hero' : 'Star'}
         </button>
-        {base64 && (
-          <div className="relative">
+        <div className="flex items-center gap-1.5">
+          {/* Pick from bin — always available if callback wired */}
+          {onPickFromBin && (
             <button
-              onClick={() => setRegenOpen(v => !v)}
+              onClick={onPickFromBin}
+              onMouseDown={e => e.stopPropagation()}
+              className={`p-0.5 transition-colors text-brand-subtle hover:text-emerald-500`}
+              title="Pick from recycle bin"
+            >
+              {/* Stack of photos icon — "pick from collection" */}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'}`}>
+                <rect x="8" y="3" width="13" height="13" rx="1.5" />
+                <rect x="3" y="8" width="13" height="13" rx="1.5" fill="currentColor" fillOpacity="0.15" />
+              </svg>
+            </button>
+          )}
+          {/* Discard — only when there's an image to send away */}
+          {base64 && onDiscard && (
+            <button
+              onClick={onDiscard}
               onMouseDown={e => e.stopPropagation()}
               disabled={genState === 'generating'}
-              className={`p-0.5 transition-colors disabled:opacity-30 ${regenOpen ? 'text-brand-text' : 'text-brand-subtle hover:text-brand-text'}`}
-              title="Regenerate options"
+              className={`p-0.5 transition-colors disabled:opacity-30 text-brand-subtle hover:text-red-500`}
+              title="Discard image (send to recycle bin)"
             >
-              <RefreshIcon className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'}`}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21q.45.061.894.124m-.894-.123L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562q.448-.064.894-.124m12.106-.438a48.108 48.108 0 0 1-3.478-.397m0 0V3.5A1.5 1.5 0 0 0 14.25 2h-4.5A1.5 1.5 0 0 0 8.25 3.5v1.94m5.628 0a48.667 48.667 0 0 0-5.628 0" />
+              </svg>
             </button>
-            {regenOpen && (
-              <RegenMenu
-                onClose={() => setRegenOpen(false)}
-                onSimple={() => { onGenerate(); setRegenOpen(false); }}
-                onWithExtra={(extra) => { onGenerate(extra); setRegenOpen(false); }}
-                isGenerating={genState === 'generating'}
-              />
-            )}
-          </div>
-        )}
+          )}
+          {base64 && (
+            <div className="relative">
+              <button
+                onClick={() => setRegenOpen(v => !v)}
+                onMouseDown={e => e.stopPropagation()}
+                disabled={genState === 'generating'}
+                className={`p-0.5 transition-colors disabled:opacity-30 ${regenOpen ? 'text-brand-text' : 'text-brand-subtle hover:text-brand-text'}`}
+                title="Regenerate options"
+              >
+                <RefreshIcon className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
+              </button>
+              {regenOpen && (
+                <RegenMenu
+                  onClose={() => setRegenOpen(false)}
+                  onSimple={() => { onGenerate(); setRegenOpen(false); }}
+                  onWithExtra={(extra) => { onGenerate(extra); setRegenOpen(false); }}
+                  isGenerating={genState === 'generating'}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -328,7 +373,7 @@ const StepIndicator: React.FC = () => (
 // ── Main component ───────────────────────────────────────────────────────────
 
 const ImageStudio: React.FC<ImageStudioProps> = ({
-  designStructure, theme, defaultImageModel, onBack, onGoToCards, onSave, isDarkMode, setIsDarkMode, onOpenSettings, projectName,
+  designStructure, theme, defaultImageModel, onBack, onGoToCards, onSave, isDarkMode, setIsDarkMode, onOpenSettings, projectName, projectId, activeWorldId,
 }) => {
   const [structure, setStructure] = useState<DesignStructure>(() =>
     JSON.parse(JSON.stringify(designStructure))
@@ -340,7 +385,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     return isValid ? (defaultImageModel ?? IMAGE_MODELS[0].id) : IMAGE_MODELS[0].id;
   });
   const [viewMode, setViewMode] = useState<'accordion' | 'grid'>('accordion');
-  const [gridZoom, setGridZoom] = useState(120); // card width in px (167% default)
+  const [gridZoom, setGridZoom] = useState(180); // card width in px (250% default)
   const [genStates, setGenStates] = useState<Record<string, GenState>>({});
   const [genErrors, setGenErrors] = useState<Record<string, string>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({ 0: true });
@@ -354,6 +399,46 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   const structureRef = useRef(structure);
 
   useEffect(() => { structureRef.current = structure; }, [structure]);
+
+  // ── Recycle bin state ─────────────────────────────────────────────────────
+  const [binEntries, setBinEntries] = useState<RecycleBinEntry[]>([]);
+  const [isBinOpen, setIsBinOpen] = useState(false);
+  // When set, the bin is opened in "adopt" mode — clicking an entry replaces
+  // the image at the target slot. Cleared after adoption or on close.
+  const [binAdoptTarget, setBinAdoptTarget] = useState<
+    | { kind: 'group'; gi: number; pi: number; label: string }
+    | { kind: 'subgroup'; gi: number; si: number; pi: number; label: string }
+    | null
+  >(null);
+
+  // Load bin once on mount
+  useEffect(() => {
+    let active = true;
+    loadBin(projectId).then(entries => { if (active) setBinEntries(entries); });
+    return () => { active = false; };
+  }, [projectId]);
+
+  // Helper: capture the previous image (if present) into the bin, fire-and-forget.
+  const sendToBin = useCallback(async (
+    prevBase64: string | undefined,
+    prompt: string,
+    sourceGroupTitle: string,
+    sourceSubgroupTitle: string | undefined,
+    reason: RecycleBinEntry['reason'],
+  ) => {
+    if (!prevBase64) return;
+    const next = await addToBin(projectId, {
+      base64Image: prevBase64,
+      prompt,
+      style: selectedStyle,
+      format: selectedFormat,
+      sourceGroupTitle,
+      sourceSubgroupTitle,
+      sourceWorldId: activeWorldId,
+      reason,
+    });
+    setBinEntries(next);
+  }, [projectId, selectedStyle, selectedFormat, activeWorldId]);
 
   const generatingCount = Object.values(genStates).filter(s => s === 'generating').length;
   const isAnyGenerating = generatingCount > 0;
@@ -403,12 +488,16 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     if (!scenario) return Promise.resolve();
     const base = `${group.title}. ${group.description}. Art direction: ${group.mood}. Scene: ${scenario.prompt}`;
     const prompt = extraPrompt ? `${base}. Additional directions: ${extraPrompt}` : base;
+    // Capture previous image so we can send it to the bin once generation succeeds
+    const prevBase64 = scenario.base64Image;
     return doGenerate(key, prompt, (base64, prev) => {
       const s: DesignStructure = JSON.parse(JSON.stringify(prev));
       s.groups[gi].imagePrompts[pi].base64Image = base64;
+      // Send the previous image (if any) to the bin — fire and forget
+      void sendToBin(prevBase64, scenario.prompt, group.title, undefined, 'regenerate');
       return s;
     });
-  }, [doGenerate]);
+  }, [doGenerate, sendToBin]);
 
   // ── Subgroup image generation ────────────────────────────────────────────
 
@@ -422,12 +511,14 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     if (!scenario) return Promise.resolve();
     const base = `Setting: ${group.title} universe (reference: ${favPrompt}). Subgroup: ${sg.title}. ${sg.description}. Art direction: ${sg.mood}. Scene: ${scenario.prompt}`;
     const prompt = extraPrompt ? `${base}. Additional directions: ${extraPrompt}` : base;
+    const prevBase64 = scenario.base64Image;
     return doGenerate(key, prompt, (base64, prev) => {
       const s: DesignStructure = JSON.parse(JSON.stringify(prev));
       s.groups[gi].subgroups[si].imagePrompts[pi].base64Image = base64;
+      void sendToBin(prevBase64, scenario.prompt, group.title, sg.title, 'regenerate');
       return s;
     });
-  }, [doGenerate]);
+  }, [doGenerate, sendToBin]);
 
   // ── Batch helpers ────────────────────────────────────────────────────────
 
@@ -496,6 +587,99 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     });
   }, [onSave]);
 
+  // ── Recycle bin handlers ──────────────────────────────────────────────────
+
+  const handleBinAdopt = useCallback(async (entry: RecycleBinEntry) => {
+    if (!binAdoptTarget) {
+      // Defensive — shouldn't happen because Adopt button is only rendered in adopt mode
+      setIsBinOpen(false);
+      return;
+    }
+    // 1) Write the entry's base64 into the target slot
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    if (binAdoptTarget.kind === 'group') {
+      const slot = s.groups[binAdoptTarget.gi]?.imagePrompts?.[binAdoptTarget.pi];
+      if (slot) slot.base64Image = entry.base64Image;
+    } else {
+      const slot = s.groups[binAdoptTarget.gi]?.subgroups?.[binAdoptTarget.si]?.imagePrompts?.[binAdoptTarget.pi];
+      if (slot) slot.base64Image = entry.base64Image;
+    }
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+
+    // 2) Remove from bin (adopt = move)
+    const nextBin = await removeFromBin(projectId, entry.id);
+    setBinEntries(nextBin);
+
+    // 3) Close modal
+    setIsBinOpen(false);
+    setBinAdoptTarget(null);
+  }, [binAdoptTarget, onSave, projectId]);
+
+  const handleBinDeleteOne = useCallback(async (entryId: string) => {
+    const next = await removeFromBin(projectId, entryId);
+    setBinEntries(next);
+  }, [projectId]);
+
+  const handleBinEmptyAll = useCallback(async () => {
+    const next = await emptyBin(projectId);
+    setBinEntries(next);
+  }, [projectId]);
+
+  // ── Slot-level actions: explicit discard + pick-from-bin ──────────────────
+
+  const handleDiscardGroupImage = useCallback(async (gi: number, pi: number) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    const slot = s.groups[gi]?.imagePrompts?.[pi];
+    if (!slot?.base64Image) return; // nothing to discard
+    const groupTitle = s.groups[gi].title;
+    const oldBase64 = slot.base64Image;
+    const oldPrompt = slot.prompt;
+    slot.base64Image = '';
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+    void sendToBin(oldBase64, oldPrompt, groupTitle, undefined, 'manual');
+  }, [onSave, sendToBin]);
+
+  const handleDiscardSubgroupImage = useCallback(async (gi: number, si: number, pi: number) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    const slot = s.groups[gi]?.subgroups?.[si]?.imagePrompts?.[pi];
+    if (!slot?.base64Image) return;
+    const groupTitle = s.groups[gi].title;
+    const subgroupTitle = s.groups[gi].subgroups[si].title;
+    const oldBase64 = slot.base64Image;
+    const oldPrompt = slot.prompt;
+    slot.base64Image = '';
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+    void sendToBin(oldBase64, oldPrompt, groupTitle, subgroupTitle, 'manual');
+  }, [onSave, sendToBin]);
+
+  const openBinForGroupSlot = useCallback((gi: number, pi: number) => {
+    const group = structureRef.current.groups[gi];
+    setBinAdoptTarget({
+      kind: 'group',
+      gi,
+      pi,
+      label: `${group.title} · Cover ${pi + 1}`,
+    });
+    setIsBinOpen(true);
+  }, []);
+
+  const openBinForSubgroupSlot = useCallback((gi: number, si: number, pi: number) => {
+    const group = structureRef.current.groups[gi];
+    const sg = group.subgroups[si];
+    setBinAdoptTarget({
+      kind: 'subgroup',
+      gi, si, pi,
+      label: `${group.title} / ${sg.title} · ${pi + 1}`,
+    });
+    setIsBinOpen(true);
+  }, []);
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -527,6 +711,30 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
           {/* Right zone — utilities only */}
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+
+            {/* Recycle Bin button (always visible) */}
+            {(() => {
+              const urgency = urgencyFor(binEntries.length);
+              const bg = urgency === 'urgent' ? '#FF4F6D' : urgency === 'warn' ? '#FFE500' : 'transparent';
+              const fg = urgency === 'urgent' ? '#FFFFFF' : '#1A1A1A';
+              return (
+                <button
+                  onClick={() => { setBinAdoptTarget(null); setIsBinOpen(true); }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 border-2 text-[10px] font-black uppercase tracking-widest transition-all ${urgency === 'normal' ? 'border-black/15 text-brand-subtle hover:text-brand-text hover:border-black' : 'border-black'}`}
+                  style={{
+                    backgroundColor: bg,
+                    color: urgency === 'normal' ? undefined : fg,
+                    borderRadius: 1,
+                    boxShadow: urgency !== 'normal' ? '2px 2px 0 #000' : undefined,
+                  }}
+                  title={`Recycle bin — ${binEntries.length} / ${BIN_CAP}`}
+                >
+                  <TrashIcon className="w-3.5 h-3.5" />
+                  Bin
+                  <span className="tabular-nums">{binEntries.length}</span>
+                </button>
+              );
+            })()}
 
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
@@ -917,8 +1125,20 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                               )}
                               {scenario.base64Image && (
                                 <div className={`absolute bottom-0 right-0 flex items-center gap-1.5 p-1.5 transition-opacity bg-black/70 ${gridRegenKey === key ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
-                                  <button onClick={() => toggleGroupFavorite(gi, pi)} className={`p-1 ${isFav ? 'text-amber-400' : 'text-white'}`}>
+                                  <button onClick={() => toggleGroupFavorite(gi, pi)} className={`p-1 ${isFav ? 'text-amber-400' : 'text-white'}`} title={isFav ? 'Hero' : 'Set as hero'}>
                                     <StarIcon isFilled={isFav} className="w-4 h-4" />
+                                  </button>
+                                  <button onClick={() => openBinForGroupSlot(gi, pi)} className="p-1 text-white hover:text-emerald-300" title="Pick from bin">
+                                    {/* Stack of photos — pick from collection */}
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                                      <rect x="8" y="3" width="13" height="13" rx="1.5" />
+                                      <rect x="3" y="8" width="13" height="13" rx="1.5" fill="currentColor" fillOpacity="0.2" />
+                                    </svg>
+                                  </button>
+                                  <button onClick={() => handleDiscardGroupImage(gi, pi)} className="p-1 text-white hover:text-red-400" title="Discard (send to bin)">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21q.45.061.894.124m-.894-.123L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562q.448-.064.894-.124m12.106-.438a48.108 48.108 0 0 1-3.478-.397m0 0V3.5A1.5 1.5 0 0 0 14.25 2h-4.5A1.5 1.5 0 0 0 8.25 3.5v1.94m5.628 0a48.667 48.667 0 0 0-5.628 0" />
+                                    </svg>
                                   </button>
                                   <div className="relative">
                                     <button
@@ -1006,8 +1226,20 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                   )}
                                   {imgS.base64Image && (
                                     <div className={`absolute bottom-0 right-0 flex items-center gap-1.5 p-1.5 transition-opacity bg-black/70 ${gridRegenKey === key ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
-                                      <button onClick={() => toggleSubFavorite(gi, si, pi)} className={`p-1 ${isSgFav ? 'text-amber-400' : 'text-white'}`}>
+                                      <button onClick={() => toggleSubFavorite(gi, si, pi)} className={`p-1 ${isSgFav ? 'text-amber-400' : 'text-white'}`} title={isSgFav ? 'Picked' : 'Pick this'}>
                                         <StarIcon isFilled={isSgFav} className="w-4 h-4" />
+                                      </button>
+                                      <button onClick={() => openBinForSubgroupSlot(gi, si, pi)} className="p-1 text-white hover:text-emerald-300" title="Pick from bin">
+                                        {/* Stack of photos — pick from collection */}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                                          <rect x="8" y="3" width="13" height="13" rx="1.5" />
+                                          <rect x="3" y="8" width="13" height="13" rx="1.5" fill="currentColor" fillOpacity="0.2" />
+                                        </svg>
+                                      </button>
+                                      <button onClick={() => handleDiscardSubgroupImage(gi, si, pi)} className="p-1 text-white hover:text-red-400" title="Discard (send to bin)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21q.45.061.894.124m-.894-.123L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562q.448-.064.894-.124m12.106-.438a48.108 48.108 0 0 1-3.478-.397m0 0V3.5A1.5 1.5 0 0 0 14.25 2h-4.5A1.5 1.5 0 0 0 8.25 3.5v1.94m5.628 0a48.667 48.667 0 0 0-5.628 0" />
+                                        </svg>
                                       </button>
                                       <div className="relative">
                                         <button
@@ -1124,6 +1356,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                           onFavorite={() => toggleGroupFavorite(gi, pi)}
                           onZoom={scenario.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${scenario.base64Image}`, label: `Card Cover · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${group.title}`, colorHex: CARD_COLORS[gi % CARD_COLORS.length] }) : undefined}
                           aspectRatio={selectedFormat.replace(':', '/')}
+                          onDiscard={() => handleDiscardGroupImage(gi, pi)}
+                          onPickFromBin={() => openBinForGroupSlot(gi, pi)}
                         />
                       );
                     })}
@@ -1208,6 +1442,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                         onZoom={imgS.base64Image ? () => setLightbox({ src: `data:image/jpeg;base64,${imgS.base64Image}`, label: `Card Front · Group ${gi + 1} · ${CARD_COLOR_NAMES[gi % CARD_COLOR_NAMES.length]} · ${sg.title}`, colorHex: CARD_COLORS[gi % CARD_COLORS.length] }) : undefined}
                                         size="small"
                                         aspectRatio={selectedFormat.replace(':', '/')}
+                                        onDiscard={() => handleDiscardSubgroupImage(gi, si, pi)}
+                                        onPickFromBin={() => openBinForSubgroupSlot(gi, si, pi)}
                                       />
                                     );
                                   })}
@@ -1237,6 +1473,16 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       </footer>
 
       {isUsageOpen && <UsageDashboard onClose={() => setIsUsageOpen(false)} />}
+
+      <RecycleBinModal
+        isOpen={isBinOpen}
+        onClose={() => { setIsBinOpen(false); setBinAdoptTarget(null); }}
+        entries={binEntries}
+        onAdopt={binAdoptTarget ? handleBinAdopt : undefined}
+        onDeleteOne={handleBinDeleteOne}
+        onEmptyAll={handleBinEmptyAll}
+        targetHint={binAdoptTarget?.label}
+      />
 
       {/* ── Lightbox ──────────────────────────────────────────────────────── */}
       {lightbox && (

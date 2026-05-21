@@ -37,7 +37,7 @@ export const SPECIAL_TYPE_TO_GROUP_TYPE: Record<string, string> = {
   promo_video:     'Grupo Extra/Utilitários',
   sponsor:         'Grupo Extra/Utilitários',
   instructions:    'Grupo Extra/Utilitários',
-  game_activator:  'Grupo Extra/Utilitários',
+  game_activator:  'Grupo Activators',
 };
 
 /** Dropdown options for assigning a group's deck role. */
@@ -49,6 +49,7 @@ export const GROUP_TYPE_OPTIONS = [
   { value: 'Grupo D',                 label: 'Magenta Tier'   },
   { value: 'Grupo Power-ups',         label: 'Power-ups'      },
   { value: 'Grupo Extra/Utilitários', label: 'Utility'        },
+  { value: 'Grupo Activators',        label: 'Activators'     },
 ];
 
 // ── Star → subgroup-index mapping ────────────────────────────────────────────
@@ -83,15 +84,17 @@ export function computeDeckConstraints(deckConfig: DeckConfig, deckFile: string)
       if (gt) counts[gt] = (counts[gt] ?? 0) + 1;
     } else if (qr.type === 'power_up') {
       counts['Grupo Power-ups'] = (counts['Grupo Power-ups'] ?? 0) + 1;
-    } else if (['promo_video', 'sponsor', 'instructions', 'game_activator'].includes(qr.type)) {
+    } else if (['promo_video', 'sponsor', 'instructions'].includes(qr.type)) {
       counts['Grupo Extra/Utilitários'] = (counts['Grupo Extra/Utilitários'] ?? 0) + 1;
+    } else if (qr.type === 'game_activator') {
+      counts['Grupo Activators'] = (counts['Grupo Activators'] ?? 0) + 1;
     }
     // game_card_back → uses group cover imagePrompt, not a subgroup
   }
 
   const ORDER = [
     'Grupo A', 'Grupo B', 'Grupo C', 'Grupo D',
-    'Grupo Power-ups', 'Grupo Extra/Utilitários',
+    'Grupo Power-ups', 'Grupo Extra/Utilitários', 'Grupo Activators',
   ];
 
   const groups: DeckGroupConstraint[] = ORDER
@@ -245,7 +248,7 @@ export const mergeDecks = (
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────
-  const utilityTypes = new Set(['promo_video', 'sponsor', 'instructions', 'game_activator']);
+  const utilityTypes = new Set(['promo_video', 'sponsor', 'instructions']);
   if (!existingBackColors.has('__utility') && qrcodes.some(q => utilityTypes.has(q.type))) {
     const group = byType.get('Grupo Extra/Utilitários');
     const scenario = group ? selectScenario(group) : null;
@@ -256,6 +259,20 @@ export const mergeDecks = (
         gdesign_data: { title: group.title, description: group.description, mood: group.mood, visual_config: scenario },
       });
       log.push(`Synthesized game_card_back for utility from group "${group.title}"`);
+    }
+  }
+
+  // ── Activators ────────────────────────────────────────────────────────────
+  if (!existingBackColors.has('__activator') && qrcodes.some(q => q.type === 'game_activator')) {
+    const group = byType.get('Grupo Activators');
+    const scenario = group ? selectScenario(group) : null;
+    if (group && scenario) {
+      qrcodes.push({
+        id: '__synthetic_back___activator',
+        pathId: '', key: '', type: 'game_card_back', stars: 0, color: '__activator',
+        gdesign_data: { title: group.title, description: group.description, mood: group.mood, visual_config: scenario },
+      });
+      log.push(`Synthesized game_card_back for activators from group "${group.title}"`);
     }
   }
 
