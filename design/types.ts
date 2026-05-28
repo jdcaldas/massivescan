@@ -57,6 +57,26 @@ export interface DesignStructure {
   /** User-pasted custom art-style suffix for the Image Studio (e.g.
    *  "Voxel Art, in the style of Refik Anadol"). Persisted with the world. */
   customImageStyle?: string;
+  /** Opt-in palette discipline per color tier (Yellow/Green/Blue/Magenta).
+   *  When enabled, the tier-specific text is appended to image prompts as
+   *  "Dominant palette: …". Only applies to the 4 color tiers, never to
+   *  Power-Ups / Utility / Activators. */
+  tierPalettes?: {
+    enabled: boolean;
+    yellow?: string;
+    green?: string;
+    blue?: string;
+    magenta?: string;
+  };
+  /** User-defined negative prompt — things to AVOID in every image.
+   *  Appended as "Avoid: …" since neither Imagen nor Gemini multimodal
+   *  expose a native negativePrompt field in the @google/genai SDK. */
+  negativePrompt?: string;
+  /** Remembered Image Studio preferences per world — so reopening the
+   *  studio restores the user's last choice instead of resetting to defaults. */
+  imageStyle?: string;   // IMAGE_STYLES id (low-poly / photorealistic / steampunk / custom)
+  imageFormat?: string;  // ArtFormatId — '1:1' | '3:4' | '16:9'
+  imageModel?: string;   // IMAGE_MODELS id (e.g. 'gemini-3.1-flash-image-preview')
 }
 
 export interface TokenUsage {

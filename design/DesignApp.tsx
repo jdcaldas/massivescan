@@ -681,6 +681,7 @@ const App: React.FC<DesignAppProps> = ({ onBackToLauncher, projectId, projectNam
         <ImageStudio
           designStructure={designStructure}
           theme={theme}
+          themeDescription={themeDescription}
           defaultImageModel={settings.defaultImageModel}
           onBack={() => setCurrentView('editor')}
           onGoToCards={handleGoToCards}

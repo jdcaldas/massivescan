@@ -26,6 +26,59 @@ const CARD_COLORS = [
   '#FED7AA', // peach
 ];
 
+// Project idea suggestions — static pool, picked at random when New Project
+// opens. Eclectic on purpose to spark creativity across categories
+// (nature, history, food, sports, geography, fiction, music, science…).
+interface ProjectIdea { name: string; client?: string; description?: string }
+const PROJECT_IDEAS: ProjectIdea[] = [
+  { name: 'Animais do Jardim Zoológico de Lisboa', client: 'Zoo de Lisboa', description: '20 animais emblemáticos para uma colecção educativa familiar' },
+  { name: 'Lendas do Futebol Português',           description: 'Eusébio, Figo, Cristiano e outros que marcaram época' },
+  { name: 'Doces Conventuais de Portugal',         client: 'Confraria dos Doceiros', description: 'Pastel de Tentúgal, Ovos Moles, Pão de Ló — o melhor da pastelaria conventual' },
+  { name: 'Castelos Assombrados da Europa',        description: 'Lendas medievais e atmosferas nocturnas' },
+  { name: 'Sete Maravilhas do Mundo Antigo',       description: 'Coliseu, Pirâmides, Petra e o resto — viagem ao tempo das maravilhas' },
+  { name: 'Aves de Portugal',                      client: 'SPEA — Sociedade Portuguesa para o Estudo das Aves', description: 'Andorinhas, abelharucos, águias e cegonhas — colecção ornitológica' },
+  { name: 'Marcos do 25 de Abril',                 description: 'A revolução dos cravos em momentos e personagens' },
+  { name: 'Vinhos do Douro',                       client: 'Confraria do Vinho do Porto', description: 'Quintas, castas e safras da região demarcada mais antiga do mundo' },
+  { name: 'Praias do Algarve',                     description: 'Da Marinha à Falésia, da Rocha ao Camilo — areia e basalto' },
+  { name: 'Plantas Medicinais Brasileiras',        description: 'Pau-d\'arco, guaraná, copaíba e a farmácia da Amazónia' },
+  { name: 'Ícones do Cinema Português',            description: 'Manoel de Oliveira, Beatriz Costa, Vasco Santana — caras que fizeram época' },
+  { name: 'Galáxias e Nebulosas',                  client: 'Planetário Calouste Gulbenkian', description: 'Andromeda, M82, Cabeça de Cavalo — viagem ao cosmos' },
+  { name: 'Dinossauros do Jurássico',              description: 'T-Rex, Triceratops, Brachiosaurus e companhia' },
+  { name: 'Cidades Perdidas',                      description: 'Petra, Machu Picchu, Angkor Wat — civilizações desaparecidas' },
+  { name: 'Festividades Tradicionais',             description: 'São João, Santos Populares, Festa dos Tabuleiros, Romarias' },
+  { name: 'Instrumentos Musicais do Mundo',        description: 'Cavaquinho, didgeridoo, sitar, kalimba — uma volta ao globo em som' },
+  { name: 'Constelações do Céu Nocturno',          description: 'Órion, Ursa Maior, Cruzeiro do Sul, Cassiopeia' },
+  { name: 'Vulcões Activos',                       description: 'Etna, Fuji, Kilauea, Stromboli — fogo da Terra' },
+  { name: 'Robots da Ficção Científica',           description: 'R2-D2, T-800, Wall-E, HAL 9000 — máquinas que viraram lenda' },
+  { name: 'Tipos de Café',                         client: 'A Brasileira do Chiado', description: 'Expresso, cortado, abatanado, galão — o pequeno-almoço português' },
+  { name: 'Pintores Surrealistas',                 description: 'Dalí, Magritte, Frida Kahlo, Max Ernst — sonhos em tela' },
+  { name: 'Heróis da Reconquista',                 description: 'Afonso Henriques, Geraldo Sem Pavor, Egas Moniz — fundadores da nação' },
+  { name: 'Templos do Mundo',                      description: 'Borobudur, Taj Mahal, Sagrada Família, Notre-Dame' },
+  { name: 'Borboletas Tropicais',                  description: 'Morpho, Monarca, Glasswing — asas mais belas da natureza' },
+  { name: 'Carros Clássicos dos Anos 60',          description: 'Mustang, Beetle, Citroën DS, Mini Cooper, Alfa Romeo Spider' },
+  { name: 'Plantas Carnívoras',                    description: 'Dioneia, Nepenthes, Sarracenia — botânica predadora' },
+  { name: 'Mitologia Grega',                       description: 'Zeus, Atena, Hermes, Medusa, Prometeu — panteão olímpico' },
+  { name: 'Bandas do Rock Português',              description: 'Heróis do Mar, Xutos, GNR, Madredeus — banda sonora do país' },
+  { name: 'Receitas da Avó',                       description: 'Sopa de pedra, arroz de pato, leite-creme — comida que abraça' },
+  { name: 'Faróis da Costa Portuguesa',            description: 'Cabo da Roca, Berlenga, São Vicente — guardiões do Atlântico' },
+  { name: 'Castas do Vinho Verde',                 client: 'Comissão de Viticultura', description: 'Alvarinho, Loureiro, Trajadura — uvas do Minho' },
+  { name: 'Personagens da Disney',                 description: 'Mickey, Belle, Mulan, Stitch — magia em colecção' },
+  { name: 'Estações de Comboio Históricas',        description: 'São Bento, King\'s Cross, Antwerpen-Centraal — arquitectura ferroviária' },
+  { name: 'Lendas Urbanas Portuguesas',            description: 'Maria da Fonte, Loureço Marques, fantasmas do Quartel' },
+  { name: 'Espécies Marinhas do Atlântico',        client: 'Oceanário de Lisboa', description: 'Polvo, choco, garoupa, mero, peixe-espada — mar nosso' },
+  { name: 'Pratos Asiáticos Clássicos',            description: 'Sushi, ramen, pad thai, dim sum, biryani — sabores do oriente' },
+  { name: 'Super-Heróis Marvel',                   description: 'Spider-Man, Hulk, Black Panther, Captain America' },
+  { name: 'Capitães dos Descobrimentos',           description: 'Vasco da Gama, Magalhães, Cabral, Bartolomeu Dias' },
+  { name: 'Cogumelos Comestíveis',                 description: 'Boletos, míscaros, chanterelles, tórtulos — colheita do outono' },
+  { name: 'Edifícios Brutalistas',                 description: 'Centro Comercial Apolo 70, Banco de Portugal, Tour Bois-le-Prêtre' },
+];
+
+// Pick N distinct random items from the pool. Re-shuffled per call.
+const pickRandomIdeas = (count: number): ProjectIdea[] => {
+  const shuffled = [...PROJECT_IDEAS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+};
+
 // Inline-rename input
 const InlineRename: React.FC<{
   value: string;
@@ -70,6 +123,13 @@ const ProjectsHome: React.FC<ProjectsHomeProps> = ({ onOpenProject }) => {
     document.documentElement.classList.contains('dark')
   );
   const [projectStats, setProjectStats] = useState<Record<string, { decks: number; worlds: number }>>({});
+  // 3 random project idea suggestions for the New Project form
+  const [suggestions, setSuggestions] = useState<ProjectIdea[]>([]);
+
+  // Refresh suggestions every time the New Project form opens
+  useEffect(() => {
+    if (creating) setSuggestions(pickRandomIdeas(3));
+  }, [creating]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
@@ -203,6 +263,60 @@ const ProjectsHome: React.FC<ProjectsHomeProps> = ({ onOpenProject }) => {
         <div className="border-b-2 border-black bg-brand-surface px-8 py-6">
           <div className="max-w-2xl">
             <p className="text-[10px] font-black uppercase tracking-widest text-brand-subtle mb-4">New Project</p>
+
+            {/* ── 3 random idea suggestions ─────────────────────────── */}
+            {suggestions.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-brand-subtle/70">
+                    ✨ Need inspiration? Click a card to fill the form
+                  </span>
+                  <button
+                    onClick={() => setSuggestions(pickRandomIdeas(3))}
+                    className="text-[9px] font-black uppercase tracking-widest text-brand-subtle hover:text-brand-text transition-colors px-2 py-0.5 border-2 border-black/15 hover:border-black"
+                    style={{ borderRadius: 1 }}
+                    title="Show 3 new random ideas"
+                  >
+                    ↻ shuffle
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {suggestions.map((idea, i) => {
+                    const ideaColor = CARD_COLORS[i % CARD_COLORS.length];
+                    return (
+                      <button
+                        key={`${idea.name}-${i}`}
+                        onClick={() => setDraft({
+                          name: idea.name,
+                          client: idea.client ?? '',
+                          description: idea.description ?? '',
+                        })}
+                        className="text-left neo-card overflow-hidden hover:opacity-90 active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_0_#000] transition-all"
+                        style={{ boxShadow: '2px 2px 0 0 #000' }}
+                      >
+                        <div className="h-1 w-full" style={{ backgroundColor: ideaColor }} />
+                        <div className="p-2.5 bg-brand-bg flex flex-col gap-1 min-h-[80px]">
+                          <span className="text-[11px] font-black uppercase tracking-tight text-brand-text leading-tight line-clamp-2">
+                            {idea.name}
+                          </span>
+                          {idea.client && (
+                            <span className="text-[8px] font-bold uppercase tracking-widest text-brand-subtle/70 truncate">
+                              {idea.client}
+                            </span>
+                          )}
+                          {idea.description && (
+                            <span className="text-[9px] text-brand-subtle leading-snug line-clamp-2 mt-auto">
+                              {idea.description}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
               <input
                 autoFocus

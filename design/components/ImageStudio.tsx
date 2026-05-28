@@ -41,6 +41,10 @@ type GenState = 'idle' | 'generating' | 'error';
 interface ImageStudioProps {
   designStructure: DesignStructure;
   theme: string;
+  /** World-level narrative context. Injected as `CONTEXT: …` into every
+   *  image prompt so the model knows the era / place / overall vibe even
+   *  when the per-card description is short. */
+  themeDescription?: string;
   defaultImageModel?: string;
   onBack: () => void;
   onGoToCards?: () => void;
@@ -376,18 +380,56 @@ const StepIndicator: React.FC = () => (
 // ── Main component ───────────────────────────────────────────────────────────
 
 const ImageStudio: React.FC<ImageStudioProps> = ({
-  designStructure, theme, defaultImageModel, onBack, onGoToCards, onSave, isDarkMode, setIsDarkMode, onOpenSettings, projectName, projectId, activeWorldId,
+  designStructure, theme, themeDescription, defaultImageModel, onBack, onGoToCards, onSave, isDarkMode, setIsDarkMode, onOpenSettings, projectName, projectId, activeWorldId,
 }) => {
   const [structure, setStructure] = useState<DesignStructure>(() =>
     JSON.parse(JSON.stringify(designStructure))
   );
-  const [selectedStyle, setSelectedStyle] = useState(IMAGE_STYLES[0].id);
+  // Selected art style — initialized from the world's saved choice if valid,
+  // else falls back to Low Poly (first preset). Persisted on change.
+  const [selectedStyle, setSelectedStyle] = useState<string>(() => {
+    const saved = designStructure.imageStyle;
+    return saved && IMAGE_STYLES.some(s => s.id === saved) ? saved : IMAGE_STYLES[0].id;
+  });
   // Custom art-style text — persisted on the world's DesignStructure
   const [customStyleText, setCustomStyleText] = useState<string>(designStructure.customImageStyle ?? '');
-  const [selectedFormat, setSelectedFormat] = useState<ArtFormatId>('3:4');
+  // Tier palettes (Phase 1 #3) — opt-in, editable per tier
+  const TIER_PALETTE_DEFAULTS = {
+    yellow:  'gold, amber, honey, warm cream',
+    green:   'forest, emerald, olive, moss',
+    blue:    'navy, cerulean, slate, ice',
+    magenta: 'crimson, plum, burgundy, rose',
+  } as const;
+  const [tierPalettesEnabled, setTierPalettesEnabled] = useState<boolean>(
+    designStructure.tierPalettes?.enabled ?? false
+  );
+  const [tierPaletteText, setTierPaletteText] = useState<Record<'yellow'|'green'|'blue'|'magenta', string>>({
+    yellow:  designStructure.tierPalettes?.yellow  ?? TIER_PALETTE_DEFAULTS.yellow,
+    green:   designStructure.tierPalettes?.green   ?? TIER_PALETTE_DEFAULTS.green,
+    blue:    designStructure.tierPalettes?.blue    ?? TIER_PALETTE_DEFAULTS.blue,
+    magenta: designStructure.tierPalettes?.magenta ?? TIER_PALETTE_DEFAULTS.magenta,
+  });
+  // Negative prompt (Phase 1 #6) — opt-in, things to AVOID in every image
+  const [negativePromptEnabled, setNegativePromptEnabled] = useState<boolean>(
+    !!designStructure.negativePrompt && designStructure.negativePrompt.trim().length > 0
+  );
+  const [negativePromptText, setNegativePromptText] = useState<string>(
+    designStructure.negativePrompt ?? ''
+  );
+  // Consistency panel collapsed by default — discoverable but unobtrusive
+  const [consistencyOpen, setConsistencyOpen] = useState<boolean>(false);
+
+  // Format — saved per world; falls back to portrait if missing.
+  const [selectedFormat, setSelectedFormat] = useState<ArtFormatId>(() => {
+    const saved = designStructure.imageFormat as ArtFormatId | undefined;
+    return saved && ART_FORMATS.some(f => f.id === saved) ? saved : '3:4';
+  });
+  // Model — world's saved choice first; then global default from settings; then first valid model.
   const [selectedModel, setSelectedModel] = useState(() => {
-    const isValid = IMAGE_MODELS.some(m => m.id === defaultImageModel);
-    return isValid ? (defaultImageModel ?? IMAGE_MODELS[0].id) : IMAGE_MODELS[0].id;
+    const worldSaved = designStructure.imageModel;
+    if (worldSaved && IMAGE_MODELS.some(m => m.id === worldSaved)) return worldSaved;
+    const isDefaultValid = IMAGE_MODELS.some(m => m.id === defaultImageModel);
+    return isDefaultValid ? (defaultImageModel ?? IMAGE_MODELS[0].id) : IMAGE_MODELS[0].id;
   });
   const [viewMode, setViewMode] = useState<'accordion' | 'grid'>('accordion');
   const [gridZoom, setGridZoom] = useState(180); // card width in px (250% default)
@@ -493,6 +535,98 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     onSave(s);
   }, [onSave]);
 
+  // Persist tier palettes (Phase 1 #3) — saves both the enabled flag and the
+  // 4 per-tier text fields onto DesignStructure.tierPalettes
+  const commitTierPalettes = useCallback((next: {
+    enabled: boolean;
+    yellow: string; green: string; blue: string; magenta: string;
+  }) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    s.tierPalettes = {
+      enabled: next.enabled,
+      yellow:  next.yellow,
+      green:   next.green,
+      blue:    next.blue,
+      magenta: next.magenta,
+    };
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
+
+  // Persist negative prompt (Phase 1 #6)
+  const commitNegativePrompt = useCallback((text: string) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    s.negativePrompt = text;
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
+
+  // ── Persist Image Studio preferences per world ──────────────────────────
+  // Style, format and model choices live on DesignStructure so reopening the
+  // studio restores the user's last picks instead of resetting to defaults.
+
+  const handleStyleChange = useCallback((styleId: string) => {
+    setSelectedStyle(styleId);
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    s.imageStyle = styleId;
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
+
+  const handleFormatChange = useCallback((formatId: ArtFormatId) => {
+    setSelectedFormat(formatId);
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    s.imageFormat = formatId;
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
+
+  const handleModelChange = useCallback((modelId: string) => {
+    setSelectedModel(modelId);
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    s.imageModel = modelId;
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
+
+  // ── Consistency blocks (Phase 1 of CONSISTENCY_ROADMAP.md) ───────────────
+  //
+  // Assembles 3 optional fragments injected around every image prompt:
+  //   • CONTEXT block — themeDescription prefix (#1, always on)
+  //   • Dominant palette — per-color-tier suffix (#3, opt-in, color tiers only)
+  //   • Avoid block — user's negative prompt (#6, opt-in)
+  //
+  // Empty fragments collapse to no-op so the prompt stays clean for
+  // collections that don't use these levers.
+  const TIER_KEYS = ['yellow', 'green', 'blue', 'magenta'] as const;
+  type TierKey = typeof TIER_KEYS[number];
+
+  const assembleConsistencyBlocks = useCallback((gi: number) => {
+    const contextBlock = themeDescription?.trim()
+      ? `CONTEXT: ${themeDescription.trim()}.\n`
+      : '';
+
+    // Tier palette only for the 4 color tiers (gi 0..3), never for
+    // power-ups / utility / activators.
+    let paletteBlock = '';
+    const tp = structureRef.current.tierPalettes;
+    if (tp?.enabled && gi >= 0 && gi <= 3) {
+      const tierName: TierKey = TIER_KEYS[gi];
+      const palText = tp[tierName]?.trim();
+      if (palText) paletteBlock = ` Dominant palette: ${palText}.`;
+    }
+
+    const np = structureRef.current.negativePrompt?.trim();
+    const avoidBlock = np ? ` Avoid: ${np}.` : '';
+
+    return { contextBlock, paletteBlock, avoidBlock };
+  }, [themeDescription]);
+
   // ── Group image generation ───────────────────────────────────────────────
 
   const generateGroupImage = useCallback((gi: number, pi: number, extraPrompt?: string) => {
@@ -500,8 +634,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     const group = structureRef.current.groups[gi];
     const scenario = group.imagePrompts[pi];
     if (!scenario) return Promise.resolve();
-    const base = `${group.title}. ${group.description}. Art direction: ${group.mood}. Scene: ${scenario.prompt}`;
-    const prompt = extraPrompt ? `${base}. Additional directions: ${extraPrompt}` : base;
+    const { contextBlock, paletteBlock, avoidBlock } = assembleConsistencyBlocks(gi);
+    const base = `${contextBlock}${group.title}. ${group.description}. Art direction: ${group.mood}. Scene: ${scenario.prompt}.${paletteBlock}${avoidBlock}`;
+    const prompt = extraPrompt ? `${base} Additional directions: ${extraPrompt}` : base;
     // Capture previous image so we can send it to the bin once generation succeeds
     const prevBase64 = scenario.base64Image;
     return doGenerate(key, prompt, (base64, prev) => {
@@ -511,7 +646,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       void sendToBin(prevBase64, scenario.prompt, group.title, undefined, 'regenerate');
       return s;
     });
-  }, [doGenerate, sendToBin]);
+  }, [doGenerate, sendToBin, assembleConsistencyBlocks]);
 
   // ── Subgroup image generation ────────────────────────────────────────────
 
@@ -523,8 +658,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     const sg = group.subgroups[si];
     const scenario = sg.imagePrompts[pi];
     if (!scenario) return Promise.resolve();
-    const base = `Setting: ${group.title} universe (reference: ${favPrompt}). Subgroup: ${sg.title}. ${sg.description}. Art direction: ${sg.mood}. Scene: ${scenario.prompt}`;
-    const prompt = extraPrompt ? `${base}. Additional directions: ${extraPrompt}` : base;
+    const { contextBlock, paletteBlock, avoidBlock } = assembleConsistencyBlocks(gi);
+    const base = `${contextBlock}Setting: ${group.title} universe (reference: ${favPrompt}). Subgroup: ${sg.title}. ${sg.description}. Art direction: ${sg.mood}. Scene: ${scenario.prompt}.${paletteBlock}${avoidBlock}`;
+    const prompt = extraPrompt ? `${base} Additional directions: ${extraPrompt}` : base;
     const prevBase64 = scenario.base64Image;
     return doGenerate(key, prompt, (base64, prev) => {
       const s: DesignStructure = JSON.parse(JSON.stringify(prev));
@@ -532,7 +668,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       void sendToBin(prevBase64, scenario.prompt, group.title, sg.title, 'regenerate');
       return s;
     });
-  }, [doGenerate, sendToBin]);
+  }, [doGenerate, sendToBin, assembleConsistencyBlocks]);
 
   // ── Batch helpers ────────────────────────────────────────────────────────
 
@@ -897,7 +1033,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                 <React.Fragment key={style.id}>
                   {i > 0 && <div className="w-px bg-black dark:bg-brand-primary flex-shrink-0" />}
                   <button
-                    onClick={() => setSelectedStyle(style.id)}
+                    onClick={() => handleStyleChange(style.id)}
                     className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors whitespace-nowrap ${
                       selectedStyle === style.id
                         ? 'bg-brand-text text-brand-surface'
@@ -928,7 +1064,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                       <React.Fragment key={fmt.id}>
                         {i > 0 && <div className="w-px bg-black dark:bg-brand-primary flex-shrink-0" />}
                         <button
-                          onClick={() => setSelectedFormat(fmt.id)}
+                          onClick={() => handleFormatChange(fmt.id)}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors whitespace-nowrap"
                           style={{
                             backgroundColor: isActive ? meta.bg : undefined,
@@ -1007,7 +1143,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
           <div className="flex items-center gap-2 flex-shrink-0">
             <select
               value={selectedModel}
-              onChange={e => setSelectedModel(e.target.value)}
+              onChange={e => handleModelChange(e.target.value)}
               className="neo-input bg-brand-bg text-xs font-black text-brand-text outline-none cursor-pointer px-3 py-1.5 flex-shrink-0"
             >
               {IMAGE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -1090,6 +1226,122 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
             </p>
           </div>
         )}
+
+        {/* ── Consistency Panel — Phase 1 of CONSISTENCY_ROADMAP.md ────── */}
+        <div className="max-w-6xl mx-auto px-6 pb-3">
+          <button
+            onClick={() => setConsistencyOpen(v => !v)}
+            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-subtle hover:text-brand-text transition-colors"
+            title="Expand collection-wide consistency controls"
+          >
+            <span>✨ Consistency</span>
+            <span className="text-brand-subtle/60">{consistencyOpen ? '▾' : '▸'}</span>
+            {(tierPalettesEnabled || negativePromptEnabled) && (
+              <span className="px-1.5 py-px text-[8px] font-black uppercase tracking-widest border-2 border-black bg-emerald-300 text-black" style={{ borderRadius: 1 }}>
+                {(tierPalettesEnabled ? 1 : 0) + (negativePromptEnabled ? 1 : 0)} active
+              </span>
+            )}
+          </button>
+
+          {consistencyOpen && (
+            <div className="mt-3 space-y-4 border-2 border-black/10 dark:border-brand-primary/15 bg-brand-bg/40 p-4" style={{ borderRadius: 1 }}>
+
+              {/* ── Tier palettes ─────────────────────────────────────── */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={tierPalettesEnabled}
+                    onChange={e => {
+                      const enabled = e.target.checked;
+                      setTierPalettesEnabled(enabled);
+                      commitTierPalettes({ enabled, ...tierPaletteText });
+                    }}
+                    className="w-3.5 h-3.5 cursor-pointer accent-emerald-500"
+                  />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">Tier palettes</span>
+                  <span className="text-[9px] text-brand-subtle/60">
+                    Force color discipline on Yellow / Green / Blue / Magenta tiers
+                  </span>
+                </label>
+
+                {tierPalettesEnabled && (
+                  <div className="mt-2 ml-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {(['yellow', 'green', 'blue', 'magenta'] as const).map(tier => {
+                      const tierColors: Record<typeof tier, string> = {
+                        yellow: '#FDE68A', green: '#86EFAC', blue: '#7DD3FC', magenta: '#F0ABFC',
+                      };
+                      return (
+                        <div key={tier} className="flex items-center gap-2">
+                          <span
+                            className="flex-shrink-0 px-2 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-black text-black"
+                            style={{ backgroundColor: tierColors[tier], borderRadius: 1, minWidth: 64, textAlign: 'center' }}
+                          >{tier}</span>
+                          <input
+                            type="text"
+                            value={tierPaletteText[tier]}
+                            onChange={e => setTierPaletteText(prev => ({ ...prev, [tier]: e.target.value }))}
+                            onBlur={() => commitTierPalettes({ enabled: tierPalettesEnabled, ...tierPaletteText })}
+                            onKeyDown={e => { if (e.key === 'Enter') { commitTierPalettes({ enabled: tierPalettesEnabled, ...tierPaletteText }); (e.target as HTMLInputElement).blur(); } }}
+                            placeholder={TIER_PALETTE_DEFAULTS[tier]}
+                            className="neo-input flex-1 bg-brand-surface text-xs text-brand-text px-2 py-1.5 placeholder:text-brand-subtle/40"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Negative prompt / guardrails ──────────────────────── */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={negativePromptEnabled}
+                    onChange={e => {
+                      const enabled = e.target.checked;
+                      setNegativePromptEnabled(enabled);
+                      // When toggling off, also clear stored text so it stops affecting prompts
+                      if (!enabled) {
+                        setNegativePromptText('');
+                        commitNegativePrompt('');
+                      } else if (negativePromptText.trim()) {
+                        commitNegativePrompt(negativePromptText);
+                      }
+                    }}
+                    className="w-3.5 h-3.5 cursor-pointer accent-emerald-500"
+                  />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">Negative prompt</span>
+                  <span className="text-[9px] text-brand-subtle/60">
+                    Things to AVOID in every generated image
+                  </span>
+                </label>
+
+                {negativePromptEnabled && (
+                  <div className="mt-2 ml-6">
+                    <textarea
+                      value={negativePromptText}
+                      onChange={e => setNegativePromptText(e.target.value)}
+                      onBlur={() => commitNegativePrompt(negativePromptText)}
+                      placeholder="e.g. no text, no logos, no humans · no blood, no labels, no callouts · no modern elements, no anachronisms…"
+                      className="neo-input w-full bg-brand-surface text-xs text-brand-text px-3 py-2 placeholder:text-brand-subtle/40 resize-none"
+                      rows={2}
+                    />
+                    {negativePromptText.trim() && (
+                      <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mt-1 inline-block">✓ saved</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <p className="text-[9px] text-brand-subtle/50 pt-2 border-t border-black/5 dark:border-brand-primary/10">
+                Theme description is always injected as <span className="font-mono">CONTEXT</span> in every prompt — no toggle needed.
+                Tier palettes apply only to Yellow/Green/Blue/Magenta tiers (not Power-Ups / Utility / Activators).
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Groups ──────────────────────────────────────────────────────── */}
