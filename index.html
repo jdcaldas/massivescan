@@ -78,6 +78,23 @@
         margin-bottom: 6px;
       }
       .dark .neo-section-label { color: #7d8590; opacity: 1; }
+
+      /* ── Shadow tier system ──────────────────────────────────────────────
+       * Three offsets cover every elevation use case. Migrate inline
+       * `boxShadow: 'Npx Npx 0 #000'` styles to these classes when possible.
+       *
+       *   .neo-shadow-sm  — 2px · small inline buttons, chips, badges
+       *   .neo-shadow     — 3px · default (already baked into .neo-btn)
+       *   .neo-shadow-lg  — 6px · modals (Recycle Bin, Usage, Card Preview…)
+       *
+       * Keep .neo-card on 5px (it sits at a mid-elevation between btn and modal).
+       */
+      .neo-shadow-sm { box-shadow: 2px 2px 0 0 #000; }
+      .neo-shadow    { box-shadow: 3px 3px 0 0 #000; }
+      .neo-shadow-lg { box-shadow: 6px 6px 0 0 #000; }
+      .dark .neo-shadow-sm { box-shadow: 2px 2px 0 0 rgba(110,231,183,0.25); }
+      .dark .neo-shadow    { box-shadow: 3px 3px 0 0 rgba(110,231,183,0.25); }
+      .dark .neo-shadow-lg { box-shadow: 6px 6px 0 0 rgba(110,231,183,0.3); }
     </style>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

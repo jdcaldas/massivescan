@@ -44,7 +44,7 @@ const TelemetryOverlay: React.FC<TelemetryOverlayProps> = ({
             {logs.length === 0 ? (
               <span className="text-brand-primary/40 italic">No interactions recorded yet.</span>
             ) : (
-              <pre className="whitespace-pre-wrap break-all text-[11px] leading-relaxed">
+              <pre className="whitespace-pre-wrap break-all text-xs leading-relaxed">
                 {JSON.stringify(logs, null, 2)}
               </pre>
             )}

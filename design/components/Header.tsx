@@ -328,7 +328,7 @@ const Header: React.FC<HeaderProps> = ({
       {/* ── Studio navigation band — full width ───────────────────────────── */}
       <div className="h-8 flex items-center border-t-2 border-black dark:border-brand-primary" style={{ backgroundColor: '#FF6B35' }}>
         <div className="flex-1" />
-        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Concept Studio —</span>
+        <span className="text-xs font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Concept Studio —</span>
         <div className="flex-1 flex items-center justify-end pr-4">
           {onGoToImages && canExport && (
             <button

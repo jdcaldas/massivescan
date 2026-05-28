@@ -165,7 +165,7 @@ const MiniCardFront: React.FC<{ scenario: ImageScenario; color: string }> = ({ s
       )}
       {/* Corner badges */}
       {Object.entries(corners).map(([pos, cfg]) => cfg && (
-        <div key={pos} className="absolute flex items-center justify-center text-[7px] font-black border border-black/40"
+        <div key={pos} className="absolute flex items-center justify-center text-[8px] font-black border border-black/40"
           style={{
             width: 16, height: 16, backgroundColor: cfg.bg, color: cfg.fg, borderRadius: 1,
             ...(pos === 'TL' ? { top: 3, left: 3 }  : {}),
@@ -183,7 +183,7 @@ const MiniCardFront: React.FC<{ scenario: ImageScenario; color: string }> = ({ s
       )}
       {/* Power bar */}
       {scenario.powerPosition === 'center' && !qrCenter && (
-        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 px-1.5 py-px text-[6px] font-black border border-black/40"
+        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 px-1.5 py-px text-[8px] font-black border border-black/40"
           style={{ backgroundColor: '#FFE500', color: '#1A1A1A' }}
         >PWR</div>
       )}
@@ -685,7 +685,7 @@ const CardStudio: React.FC<CardStudioProps> = ({
               ← Image Studio
             </button>
           </div>
-          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Card Studio —</span>
+          <span className="text-xs font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Card Studio —</span>
           <div className="flex-1 flex items-center justify-end pr-4">
             {onGoToFusion && (
               <button

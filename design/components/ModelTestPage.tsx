@@ -315,7 +315,7 @@ const ModelTestPage: React.FC<ModelTestPageProps> = ({ onBack, projectName }) =>
             />
 
             {/* Label */}
-            <span className="text-[11px] font-black uppercase tracking-widest text-white/70">
+            <span className="text-xs font-black uppercase tracking-widest text-white/70">
               {lightbox.label}
             </span>
           </div>

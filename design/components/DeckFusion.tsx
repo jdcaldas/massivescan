@@ -599,7 +599,7 @@ const DeckFusion: React.FC<DeckFusionProps> = ({
               ← Card Studio
             </button>
           </div>
-          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Deck Fusion —</span>
+          <span className="text-xs font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Deck Fusion —</span>
           <div className="flex-1" />
         </div>
       </header>

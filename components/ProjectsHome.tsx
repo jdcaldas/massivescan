@@ -296,7 +296,7 @@ const ProjectsHome: React.FC<ProjectsHomeProps> = ({ onOpenProject }) => {
                       >
                         <div className="h-1 w-full" style={{ backgroundColor: ideaColor }} />
                         <div className="p-2.5 bg-brand-bg flex flex-col gap-1 min-h-[80px]">
-                          <span className="text-[11px] font-black uppercase tracking-tight text-brand-text leading-tight line-clamp-2">
+                          <span className="text-xs font-black uppercase tracking-tight text-brand-text leading-tight line-clamp-2">
                             {idea.name}
                           </span>
                           {idea.client && (

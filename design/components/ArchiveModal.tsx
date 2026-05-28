@@ -135,7 +135,7 @@ const ArchiveModal: React.FC<ArchiveModalProps> = ({ designs, onLoad, onDelete, 
                     </div>
                   )}
 
-                  <p className="text-[11px] text-brand-subtle mt-0.5 font-medium flex items-center gap-1.5 flex-wrap">
+                  <p className="text-xs text-brand-subtle mt-0.5 font-medium flex items-center gap-1.5 flex-wrap">
                     {design.groupCount} groups
                     {design.language && (
                       <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border-2 border-black dark:border-brand-primary bg-brand-secondary text-brand-text leading-none">

@@ -127,7 +127,7 @@ const RecycleBinModal: React.FC<RecycleBinModalProps> = ({
           <select
             value={groupFilter}
             onChange={e => setGroupFilter(e.target.value)}
-            className="neo-input text-[11px] font-black px-2 py-1.5 bg-brand-bg cursor-pointer"
+            className="neo-input text-xs font-black px-2 py-1.5 bg-brand-bg cursor-pointer"
           >
             <option value="all">All groups</option>
             {availableGroups.map(g => <option key={g} value={g}>{g}</option>)}
@@ -135,7 +135,7 @@ const RecycleBinModal: React.FC<RecycleBinModalProps> = ({
           <select
             value={styleFilter}
             onChange={e => setStyleFilter(e.target.value)}
-            className="neo-input text-[11px] font-black px-2 py-1.5 bg-brand-bg cursor-pointer"
+            className="neo-input text-xs font-black px-2 py-1.5 bg-brand-bg cursor-pointer"
           >
             <option value="all">All styles</option>
             {availableStyles.map(s => <option key={s} value={s}>{s}</option>)}

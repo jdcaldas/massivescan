@@ -88,7 +88,7 @@ const NoPick: React.FC<{ width: number; label?: string; color?: string; aspectRa
       style={{ aspectRatio }}
     >
       <StarIcon className="w-4 h-4" style={{ color: `${color}60` }} />
-      <span className="text-[7px] font-black uppercase tracking-widest text-brand-subtle/40 text-center px-2 leading-tight">
+      <span className="text-[8px] font-black uppercase tracking-widest text-brand-subtle/40 text-center px-2 leading-tight">
         no pick yet
       </span>
     </div>
@@ -1232,7 +1232,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
               ← Concept Studio
             </button>
           </div>
-          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Image Studio —</span>
+          <span className="text-xs font-black uppercase tracking-[0.3em] text-black select-none flex-shrink-0">— Image Studio —</span>
           <div className="flex-1 flex items-center justify-end pr-4">
             {onGoToCards && (
               <button onClick={onGoToCards} className="px-2.5 py-0.5 border-2 border-black text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 active:opacity-75 transition-opacity" style={{ backgroundColor: '#BEF264', borderRadius: 1 }}>
@@ -2003,8 +2003,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                     {/* ── Pair 0: group images (COVER 1 + COVER 2) ── */}
                     <div className={`flex flex-col ${group.subgroups.length > 0 ? 'pr-3 mr-2 border-r-2 border-black/20' : ''}`}>
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span className="px-1.5 py-px text-[7px] font-black uppercase tracking-widest bg-brand-text text-brand-surface" style={{ borderRadius: 1 }}>Cover</span>
-                        <span className="text-[7px] font-black text-brand-subtle/40 uppercase tracking-wide">pick 1</span>
+                        <span className="px-1.5 py-px text-[8px] font-black uppercase tracking-widest bg-brand-text text-brand-surface" style={{ borderRadius: 1 }}>Cover</span>
+                        <span className="text-[8px] font-black text-brand-subtle/40 uppercase tracking-wide">pick 1</span>
                       </div>
                       <div className="flex gap-1">
                       {group.imagePrompts.map((scenario, pi) => {
@@ -2100,8 +2100,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                           className={`flex flex-col ${!isLastPair ? 'pr-3 mr-2 border-r-2 border-black/15' : ''}`}
                         >
                           <div className="flex items-center gap-1 mb-1">
-                            <span className="text-[7px] font-black uppercase tracking-widest text-brand-subtle/60 truncate max-w-[90px]" title={sg.title}>{sg.title}</span>
-                            <span className="text-[7px] text-brand-subtle/40 flex-shrink-0">· 1/2</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-brand-subtle/60 truncate max-w-[90px]" title={sg.title}>{sg.title}</span>
+                            <span className="text-[8px] text-brand-subtle/40 flex-shrink-0">· 1/2</span>
                           </div>
                           <div className="flex gap-1">
                           {sg.imagePrompts.map((imgS, pi) => {
@@ -2453,7 +2453,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
             />
 
             {/* Label */}
-            <span className="text-[11px] font-black uppercase tracking-widest text-white/70">
+            <span className="text-xs font-black uppercase tracking-widest text-white/70">
               {lightbox.colorHex
                 ? lightbox.label.split(' · ').map((part, i, arr) => (
                     <span key={i}>

@@ -479,7 +479,7 @@ const App: React.FC<CardsAppProps> = ({ onBackToLauncher, projectId, projectName
                   style={{ backgroundColor: bg, borderRadius: 1 }}
                 >
                   <div className="font-black text-sm leading-none" style={{ color: light ? '#6EE7B7' : '#1A1A1A' }}>{val}</div>
-                  <div className="text-[7px] font-black uppercase tracking-wide" style={{ color: light ? 'rgba(110,231,183,0.7)' : '#1A1A1A' }}>{label}</div>
+                  <div className="text-[8px] font-black uppercase tracking-wide" style={{ color: light ? 'rgba(110,231,183,0.7)' : '#1A1A1A' }}>{label}</div>
                 </div>
               ))}
             </div>

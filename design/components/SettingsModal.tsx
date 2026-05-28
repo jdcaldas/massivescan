@@ -23,7 +23,7 @@ const Row: React.FC<{ label: string; hint?: string; children: React.ReactNode }>
   <div className="flex items-center justify-between gap-6 py-4 border-b-2 border-black/10 dark:border-brand-primary/20 last:border-0">
     <div className="min-w-0">
       <p className="text-sm font-black uppercase tracking-wide text-brand-text">{label}</p>
-      {hint && <p className="text-[11px] text-brand-subtle mt-0.5 leading-snug">{hint}</p>}
+      {hint && <p className="text-xs text-brand-subtle mt-0.5 leading-snug">{hint}</p>}
     </div>
     <div className="flex-shrink-0">{children}</div>
   </div>

@@ -97,7 +97,7 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, index, viewMode, expandSta
     <div className={`relative neo-card bg-brand-surface flex flex-col transition-opacity ${isCardLoading ? 'opacity-50 pointer-events-none' : ''}`}>
       {isCardLoading && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-brand-primary/30 border-t-brand-primary rounded-full animate-spin" />
         </div>
       )}
 
