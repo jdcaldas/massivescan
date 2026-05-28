@@ -54,6 +54,9 @@ export interface DesignStructure {
   icon: string;
   visualStyle: string;
   groups: Group[];
+  /** User-pasted custom art-style suffix for the Image Studio (e.g.
+   *  "Voxel Art, in the style of Refik Anadol"). Persisted with the world. */
+  customImageStyle?: string;
 }
 
 export interface TokenUsage {

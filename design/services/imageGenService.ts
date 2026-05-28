@@ -50,10 +50,13 @@ export interface ImageStyle {
 export const IMAGE_STYLES: ImageStyle[] = [
   { id: 'low-poly',       label: 'Low Poly',      suffix: 'low poly art, geometric shapes, flat shading, vibrant palette' },
   { id: 'photorealistic', label: 'Photorealistic', suffix: 'photorealistic, cinematic lighting, ultra-detailed, 8K render' },
-  { id: 'watercolor',     label: 'Watercolor',     suffix: 'watercolor painting, soft brush strokes, flowing pigments, paper texture' },
-  { id: 'synthwave',      label: 'Synthwave',      suffix: 'synthwave aesthetic, neon glow, retro-futuristic, chromatic aberration' },
   { id: 'steampunk',      label: 'Steampunk',      suffix: 'steampunk style, brass and copper, Victorian era, steam and gears' },
+  // Custom — suffix comes from the user-pasted text (resolved at call time).
+  { id: 'custom',         label: 'Custom',         suffix: '' },
 ];
+
+/** The id used for the user-defined custom art style. */
+export const CUSTOM_STYLE_ID = 'custom';
 
 // Image generation models — three tiers across two families.
 //
@@ -106,8 +109,13 @@ export async function generateImage(
   modelId: string,
   aspectRatio: ArtFormatId = '3:4',
   signal?: AbortSignal,
+  customSuffix?: string,
 ): Promise<string> {
-  const suffix = IMAGE_STYLES.find(s => s.id === styleId)?.suffix ?? '';
+  // For the 'custom' style, the suffix is the user-pasted text; otherwise
+  // use the predefined style suffix.
+  const suffix = styleId === CUSTOM_STYLE_ID
+    ? (customSuffix ?? '').trim()
+    : (IMAGE_STYLES.find(s => s.id === styleId)?.suffix ?? '');
   const base = suffix ? `${prompt}. Art style: ${suffix}.` : prompt;
   const noText = 'No text, letters, words, labels, captions, or typography of any kind in the image.';
 

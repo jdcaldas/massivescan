@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { DesignStructure, RecycleBinEntry } from '../types';
-import { generateImage, IMAGE_STYLES, IMAGE_MODELS, ART_FORMATS, type ArtFormatId } from '../services/imageGenService';
+import { generateImage, IMAGE_STYLES, IMAGE_MODELS, ART_FORMATS, CUSTOM_STYLE_ID, type ArtFormatId } from '../services/imageGenService';
 import {
   SparklesIcon, StarIcon, ChevronDownIcon, ChevronUpIcon,
   SunIcon, MoonIcon, SettingsIcon, RefreshIcon, GridIcon, ListIcon, ChartBarIcon, PencilIcon, TrashIcon, DownloadIcon,
@@ -382,6 +382,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     JSON.parse(JSON.stringify(designStructure))
   );
   const [selectedStyle, setSelectedStyle] = useState(IMAGE_STYLES[0].id);
+  // Custom art-style text — persisted on the world's DesignStructure
+  const [customStyleText, setCustomStyleText] = useState<string>(designStructure.customImageStyle ?? '');
   const [selectedFormat, setSelectedFormat] = useState<ArtFormatId>('3:4');
   const [selectedModel, setSelectedModel] = useState(() => {
     const isValid = IMAGE_MODELS.some(m => m.id === defaultImageModel);
@@ -462,7 +464,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
     try {
       const base64 = await generateImage(
-        prompt, selectedStyle, selectedModel, selectedFormat, abortRef.current?.signal,
+        prompt, selectedStyle, selectedModel, selectedFormat, abortRef.current?.signal, customStyleText,
       );
       // Apply to latest structure (via ref to avoid stale closure)
       const updated = applyResult(base64, structureRef.current);
@@ -480,7 +482,16 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       setGenStates(prev => ({ ...prev, [key]: 'error' }));
       setGenErrors(prev => ({ ...prev, [key]: err?.message ?? String(e) }));
     }
-  }, [selectedStyle, selectedModel, selectedFormat, onSave]);
+  }, [selectedStyle, selectedModel, selectedFormat, customStyleText, onSave]);
+
+  // Persist the custom style text onto the world structure (debounced via blur/commit)
+  const commitCustomStyle = useCallback((text: string) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    s.customImageStyle = text;
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
 
   // ── Group image generation ───────────────────────────────────────────────
 
@@ -1055,6 +1066,30 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
           </div>
 
         </div>
+
+        {/* ── Custom style input — shown when "Custom" is selected ────────── */}
+        {selectedStyle === CUSTOM_STYLE_ID && (
+          <div className="max-w-6xl mx-auto px-6 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-black uppercase tracking-widest text-brand-subtle flex-shrink-0">Custom Style</span>
+              <input
+                type="text"
+                value={customStyleText}
+                onChange={e => setCustomStyleText(e.target.value)}
+                onBlur={() => commitCustomStyle(customStyleText)}
+                onKeyDown={e => { if (e.key === 'Enter') { commitCustomStyle(customStyleText); (e.target as HTMLInputElement).blur(); } }}
+                placeholder="e.g. Voxel Art, in the style of Refik Anadol · Dark Fantasy, mysterious atmosphere · Tech Noir, in the style of James Gurney…"
+                className="neo-input flex-1 bg-brand-bg text-xs text-brand-text px-3 py-2 placeholder:text-brand-subtle/40"
+              />
+              {customStyleText && (
+                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 flex-shrink-0">✓ saved</span>
+              )}
+            </div>
+            <p className="text-[9px] text-brand-subtle/50 mt-1 ml-[88px]">
+              Pasted text is appended to every prompt as the art direction, and is saved with this world.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Groups ──────────────────────────────────────────────────────── */}
