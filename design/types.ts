@@ -31,6 +31,11 @@ export interface Subgroup {
   mood: string;
   imagePrompts: ImageScenario[];
   favoriteImagePromptIndex: number | null;
+  /** Per-subgroup override for the world's recurring character: when true,
+   *  this subgroup's prompts will NOT include the main character (e.g. "The
+   *  Spanish Armada" subgroup in a Queen Elizabeth world). Only consulted
+   *  when DesignStructure.recurringCharacter.enabled is true. */
+  excludeMainCharacter?: boolean;
 }
 
 export interface Group {
@@ -77,6 +82,24 @@ export interface DesignStructure {
   imageStyle?: string;   // IMAGE_STYLES id (low-poly / photorealistic / steampunk / custom)
   imageFormat?: string;  // ArtFormatId — '1:1' | '3:4' | '16:9'
   imageModel?: string;   // IMAGE_MODELS id (e.g. 'gemini-3.1-flash-image-preview')
+  /** Opt-in: a recurring protagonist that should appear consistently across
+   *  cards (e.g. Queen Elizabeth in a biographical deck). When enabled, the
+   *  description is injected into every prompt and the reference image (if
+   *  any) is passed as vision input to multimodal Gemini models. Per-card
+   *  exclusion via Subgroup.excludeMainCharacter. */
+  recurringCharacter?: {
+    enabled: boolean;
+    /** Free-form physical / aesthetic description used as text anchor.
+     *  E.g. "Ruiva, casaco bordado dourado, expressão regal, 30 anos…" */
+    description: string;
+    /** Pointer to an existing image in the structure to use as visual anchor.
+     *  Resolved at runtime by reading
+     *  structure.groups[gi].subgroups[si].imagePrompts[pi].base64Image. */
+    referenceSlot?: { gi: number; si: number; pi: number };
+    /** Alternative: an uploaded reference image (base64, no MIME prefix).
+     *  Takes precedence over referenceSlot when both are set. */
+    referenceImageBase64?: string;
+  };
 }
 
 export interface TokenUsage {

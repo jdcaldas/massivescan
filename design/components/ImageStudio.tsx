@@ -420,6 +420,28 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   // Consistency panel collapsed by default — discoverable but unobtrusive
   const [consistencyOpen, setConsistencyOpen] = useState<boolean>(false);
 
+  // Recurring character (Phase 2 #4) — opt-in protagonist that appears across cards
+  const [recurringCharacterEnabled, setRecurringCharacterEnabled] = useState<boolean>(
+    designStructure.recurringCharacter?.enabled ?? false
+  );
+  const [recurringCharacterDescription, setRecurringCharacterDescription] = useState<string>(
+    designStructure.recurringCharacter?.description ?? ''
+  );
+  // Resolved preview of the current character reference (UI display only)
+  const [characterPreviewSrc, setCharacterPreviewSrc] = useState<string>(() => {
+    const rc = designStructure.recurringCharacter;
+    if (!rc) return '';
+    if (rc.referenceImageBase64?.trim()) return rc.referenceImageBase64;
+    const ptr = rc.referenceSlot;
+    if (ptr) {
+      const slot = ptr.si === -1
+        ? designStructure.groups?.[ptr.gi]?.imagePrompts?.[ptr.pi]
+        : designStructure.groups?.[ptr.gi]?.subgroups?.[ptr.si]?.imagePrompts?.[ptr.pi];
+      if (slot?.base64Image) return slot.base64Image;
+    }
+    return '';
+  });
+
   // Format — saved per world; falls back to portrait if missing.
   const [selectedFormat, setSelectedFormat] = useState<ArtFormatId>(() => {
     const saved = designStructure.imageFormat as ArtFormatId | undefined;
@@ -501,13 +523,16 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     key: string,
     prompt: string,
     applyResult: (base64: string, prev: DesignStructure) => DesignStructure,
+    /** Optional vision reference (base64) — included only when the recurring
+     *  character is enabled AND the current card isn't excluded. */
+    visionReference?: string,
   ) => {
     setGenStates(prev => ({ ...prev, [key]: 'generating' }));
     setGenErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
 
     try {
       const base64 = await generateImage(
-        prompt, selectedStyle, selectedModel, selectedFormat, abortRef.current?.signal, customStyleText,
+        prompt, selectedStyle, selectedModel, selectedFormat, abortRef.current?.signal, customStyleText, visionReference,
       );
       // Apply to latest structure (via ref to avoid stale closure)
       const updated = applyResult(base64, structureRef.current);
@@ -559,6 +584,60 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   const commitNegativePrompt = useCallback((text: string) => {
     const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
     s.negativePrompt = text;
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
+
+  // ── Recurring character handlers (Phase 2 #4) ───────────────────────────
+  /** Save the description and enabled flag, preserving any existing reference. */
+  const commitRecurringCharacterMeta = useCallback((enabled: boolean, description: string) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    const existing = s.recurringCharacter ?? { enabled: false, description: '' };
+    s.recurringCharacter = { ...existing, enabled, description };
+    structureRef.current = s;
+    setStructure(s);
+    onSave(s);
+  }, [onSave]);
+
+  /** Store an uploaded reference image (base64) on the world. */
+  const commitRecurringCharacterUpload = useCallback((base64NoPrefix: string) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    const existing = s.recurringCharacter ?? { enabled: true, description: '' };
+    s.recurringCharacter = {
+      ...existing,
+      // Uploaded image takes precedence — drop any prior slot pointer
+      referenceImageBase64: base64NoPrefix,
+      referenceSlot: undefined,
+    };
+    structureRef.current = s;
+    setStructure(s);
+    setCharacterPreviewSrc(base64NoPrefix);
+    onSave(s);
+  }, [onSave]);
+
+  /** Clear the reference image. */
+  const clearRecurringCharacterReference = useCallback(() => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    const existing = s.recurringCharacter;
+    if (!existing) return;
+    s.recurringCharacter = {
+      ...existing,
+      referenceImageBase64: undefined,
+      referenceSlot: undefined,
+    };
+    structureRef.current = s;
+    setStructure(s);
+    setCharacterPreviewSrc('');
+    onSave(s);
+  }, [onSave]);
+
+  /** Toggle per-subgroup character exclusion (used by the accordion view). */
+  const toggleSubgroupCharacterExclusion = useCallback((gi: number, si: number) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    const sg = s.groups?.[gi]?.subgroups?.[si];
+    if (!sg) return;
+    sg.excludeMainCharacter = !sg.excludeMainCharacter;
     structureRef.current = s;
     setStructure(s);
     onSave(s);
@@ -651,10 +730,50 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   const TIER_KEYS = ['yellow', 'green', 'blue', 'magenta'] as const;
   type TierKey = typeof TIER_KEYS[number];
 
-  const assembleConsistencyBlocks = useCallback((gi: number) => {
+  /**
+   * Resolve the recurring-character reference image base64 from the
+   * structure, preferring an uploaded image over a structure pointer.
+   * Returns undefined when no reference is set or pointer is stale.
+   */
+  const resolveCharacterReference = useCallback((): string | undefined => {
+    const rc = structureRef.current.recurringCharacter;
+    if (!rc?.enabled) return undefined;
+    if (rc.referenceImageBase64?.trim()) return rc.referenceImageBase64;
+    const ptr = rc.referenceSlot;
+    if (ptr) {
+      const slot = structureRef.current.groups?.[ptr.gi]?.subgroups?.[ptr.si]?.imagePrompts?.[ptr.pi];
+      if (slot?.base64Image) return slot.base64Image;
+      // Also accept a pointer to a GROUP cover when si === -1
+      if (ptr.si === -1) {
+        const cover = structureRef.current.groups?.[ptr.gi]?.imagePrompts?.[ptr.pi];
+        if (cover?.base64Image) return cover.base64Image;
+      }
+    }
+    return undefined;
+  }, []);
+
+  /**
+   * Assemble the Consistency Panel blocks injected around every prompt.
+   * `si` is the subgroup index when generating a subgroup card (lets us
+   * honour Subgroup.excludeMainCharacter for per-card opt-outs).
+   */
+  const assembleConsistencyBlocks = useCallback((gi: number, si?: number) => {
     const contextBlock = themeDescription?.trim()
       ? `CONTEXT: ${themeDescription.trim()}.\n`
       : '';
+
+    // Recurring character block — opt-in, with per-subgroup exclusion.
+    let characterBlock = '';
+    let characterEnabledForThisCard = false;
+    const rc = structureRef.current.recurringCharacter;
+    if (rc?.enabled && rc.description?.trim()) {
+      const isExcluded = si !== undefined &&
+        structureRef.current.groups?.[gi]?.subgroups?.[si]?.excludeMainCharacter === true;
+      if (!isExcluded) {
+        characterBlock = `MAIN CHARACTER (recurring across cards): ${rc.description.trim()}.\n`;
+        characterEnabledForThisCard = true;
+      }
+    }
 
     // Tier palette only for the 4 color tiers (gi 0..3), never for
     // power-ups / utility / activators.
@@ -669,7 +788,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     const np = structureRef.current.negativePrompt?.trim();
     const avoidBlock = np ? ` Avoid: ${np}.` : '';
 
-    return { contextBlock, paletteBlock, avoidBlock };
+    return { contextBlock, characterBlock, paletteBlock, avoidBlock, characterEnabledForThisCard };
   }, [themeDescription]);
 
   // ── Group image generation ───────────────────────────────────────────────
@@ -679,9 +798,12 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     const group = structureRef.current.groups[gi];
     const scenario = group.imagePrompts[pi];
     if (!scenario) return Promise.resolve();
-    const { contextBlock, paletteBlock, avoidBlock } = assembleConsistencyBlocks(gi);
-    const base = `${contextBlock}${group.title}. ${group.description}. Art direction: ${group.mood}. Scene: ${scenario.prompt}.${paletteBlock}${avoidBlock}`;
+    // Group covers are not "subgroup cards" — no per-subgroup exclusion check
+    const { contextBlock, characterBlock, paletteBlock, avoidBlock, characterEnabledForThisCard } = assembleConsistencyBlocks(gi);
+    const base = `${contextBlock}${characterBlock}${group.title}. ${group.description}. Art direction: ${group.mood}. Scene: ${scenario.prompt}.${paletteBlock}${avoidBlock}`;
     const prompt = extraPrompt ? `${base} Additional directions: ${extraPrompt}` : base;
+    // Vision reference for character anchoring — only when feature is on
+    const visionRef = characterEnabledForThisCard ? resolveCharacterReference() : undefined;
     // Capture previous image so we can send it to the bin once generation succeeds
     const prevBase64 = scenario.base64Image;
     return doGenerate(key, prompt, (base64, prev) => {
@@ -690,8 +812,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       // Send the previous image (if any) to the bin — fire and forget
       void sendToBin(prevBase64, scenario.prompt, group.title, undefined, 'regenerate');
       return s;
-    });
-  }, [doGenerate, sendToBin, assembleConsistencyBlocks]);
+    }, visionRef);
+  }, [doGenerate, sendToBin, assembleConsistencyBlocks, resolveCharacterReference]);
 
   // ── Subgroup image generation ────────────────────────────────────────────
 
@@ -703,17 +825,19 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     const sg = group.subgroups[si];
     const scenario = sg.imagePrompts[pi];
     if (!scenario) return Promise.resolve();
-    const { contextBlock, paletteBlock, avoidBlock } = assembleConsistencyBlocks(gi);
-    const base = `${contextBlock}Setting: ${group.title} universe (reference: ${favPrompt}). Subgroup: ${sg.title}. ${sg.description}. Art direction: ${sg.mood}. Scene: ${scenario.prompt}.${paletteBlock}${avoidBlock}`;
+    // si is passed so per-subgroup exclusion (Subgroup.excludeMainCharacter) is honoured
+    const { contextBlock, characterBlock, paletteBlock, avoidBlock, characterEnabledForThisCard } = assembleConsistencyBlocks(gi, si);
+    const base = `${contextBlock}${characterBlock}Setting: ${group.title} universe (reference: ${favPrompt}). Subgroup: ${sg.title}. ${sg.description}. Art direction: ${sg.mood}. Scene: ${scenario.prompt}.${paletteBlock}${avoidBlock}`;
     const prompt = extraPrompt ? `${base} Additional directions: ${extraPrompt}` : base;
+    const visionRef = characterEnabledForThisCard ? resolveCharacterReference() : undefined;
     const prevBase64 = scenario.base64Image;
     return doGenerate(key, prompt, (base64, prev) => {
       const s: DesignStructure = JSON.parse(JSON.stringify(prev));
       s.groups[gi].subgroups[si].imagePrompts[pi].base64Image = base64;
       void sendToBin(prevBase64, scenario.prompt, group.title, sg.title, 'regenerate');
       return s;
-    });
-  }, [doGenerate, sendToBin, assembleConsistencyBlocks]);
+    }, visionRef);
+  }, [doGenerate, sendToBin, assembleConsistencyBlocks, resolveCharacterReference]);
 
   // ── Batch helpers ────────────────────────────────────────────────────────
 
@@ -1369,9 +1493,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
           >
             <span>✨ Consistency</span>
             <span className="text-brand-subtle/60">{consistencyOpen ? '▾' : '▸'}</span>
-            {(tierPalettesEnabled || negativePromptEnabled) && (
+            {(tierPalettesEnabled || negativePromptEnabled || recurringCharacterEnabled) && (
               <span className="px-1.5 py-px text-[8px] font-black uppercase tracking-widest border-2 border-black bg-emerald-300 text-black" style={{ borderRadius: 1 }}>
-                {(tierPalettesEnabled ? 1 : 0) + (negativePromptEnabled ? 1 : 0)} active
+                {(tierPalettesEnabled ? 1 : 0) + (negativePromptEnabled ? 1 : 0) + (recurringCharacterEnabled ? 1 : 0)} active
               </span>
             )}
           </button>
@@ -1422,6 +1546,113 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Recurring character (Phase 2 #4) ──────────────────── */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={recurringCharacterEnabled}
+                    onChange={e => {
+                      const enabled = e.target.checked;
+                      setRecurringCharacterEnabled(enabled);
+                      commitRecurringCharacterMeta(enabled, recurringCharacterDescription);
+                    }}
+                    className="w-3.5 h-3.5 cursor-pointer accent-emerald-500"
+                  />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">Recurring character</span>
+                  <span className="text-[9px] text-brand-subtle/60">
+                    Lock a protagonist across cards (description + reference image)
+                  </span>
+                </label>
+
+                {recurringCharacterEnabled && (
+                  <div className="mt-2 ml-6 space-y-3">
+                    {/* Description */}
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-brand-subtle">Description</span>
+                      <textarea
+                        value={recurringCharacterDescription}
+                        onChange={e => setRecurringCharacterDescription(e.target.value)}
+                        onBlur={() => commitRecurringCharacterMeta(recurringCharacterEnabled, recurringCharacterDescription)}
+                        placeholder="e.g. Ruiva, casaco bordado dourado, expressão regal, 30 anos, traje renascentista…"
+                        className="neo-input w-full bg-brand-surface text-xs text-brand-text px-3 py-2 placeholder:text-brand-subtle/40 resize-none mt-1"
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Reference image */}
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-brand-subtle">Reference image (optional)</span>
+                      <div className="flex items-start gap-3 mt-1">
+                        {/* Preview thumbnail */}
+                        <div
+                          className="flex-shrink-0 border-2 border-black bg-brand-surface overflow-hidden flex items-center justify-center"
+                          style={{ width: 80, height: 100, borderRadius: 1, boxShadow: '2px 2px 0 #000' }}
+                        >
+                          {characterPreviewSrc ? (
+                            <img
+                              src={`data:image/jpeg;base64,${characterPreviewSrc}`}
+                              alt="Character reference"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-[8px] font-black uppercase tracking-widest text-brand-subtle/40 text-center px-1 leading-tight">
+                              no ref<br />image
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions + hint */}
+                        <div className="flex-1 space-y-2">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border-2 border-black bg-brand-bg text-brand-text hover:bg-emerald-300 hover:text-black cursor-pointer transition-colors"
+                            style={{ borderRadius: 1, boxShadow: '2px 2px 0 #000' }}
+                          >
+                            <span>📁</span>
+                            Upload image
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              onChange={async e => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                // Read as base64, strip the "data:image/...;base64," prefix
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  const dataUrl = reader.result as string;
+                                  const base64 = dataUrl.replace(/^data:image\/[a-z0-9+]+;base64,/i, '');
+                                  commitRecurringCharacterUpload(base64);
+                                };
+                                reader.readAsDataURL(file);
+                                // Reset the input so re-uploading the same file works
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                          {characterPreviewSrc && (
+                            <button
+                              onClick={clearRecurringCharacterReference}
+                              className="inline-flex items-center gap-1 ml-2 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-brand-subtle hover:text-red-500 border-2 border-black/15 hover:border-red-500"
+                              style={{ borderRadius: 1 }}
+                            >
+                              ✕ Remove
+                            </button>
+                          )}
+                          <p className="text-[9px] text-brand-subtle/60 leading-snug">
+                            Reference is passed as <span className="font-mono">vision input</span> to Gemini multimodal models for better character likeness.
+                            Imagen models use text description only.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-[9px] text-brand-subtle/50">
+                      Per-card opt-out: in the Subgroups list below, toggle <span className="font-mono">🧍 include character</span> off for cards where the protagonist shouldn't appear (e.g. battle scenes without them).
+                    </p>
                   </div>
                 )}
               </div>
@@ -1982,6 +2213,32 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                                   {sg.title}
                                 </span>
                               </div>
+                              {/* Per-subgroup character toggle — only when global recurring character is on */}
+                              {recurringCharacterEnabled && (
+                                <span
+                                  onClick={e => { e.stopPropagation(); toggleSubgroupCharacterExclusion(gi, si); }}
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      toggleSubgroupCharacterExclusion(gi, si);
+                                    }
+                                  }}
+                                  title={sg.excludeMainCharacter
+                                    ? 'Character is EXCLUDED on this card — click to include'
+                                    : 'Character is INCLUDED on this card — click to exclude (e.g. battle scenes without the protagonist)'}
+                                  className={`flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border-2 border-black flex-shrink-0 cursor-pointer transition-colors ${
+                                    sg.excludeMainCharacter
+                                      ? 'bg-brand-surface text-brand-subtle/50 hover:bg-brand-bg'
+                                      : 'bg-amber-300 text-black hover:bg-amber-400'
+                                  }`}
+                                  style={{ borderRadius: 1 }}
+                                >
+                                  🧍 {sg.excludeMainCharacter ? 'off' : 'on'}
+                                </span>
+                              )}
                               {sgDone > 0 && (
                                 <span className="text-[9px] font-black bg-brand-secondary text-brand-text px-1 py-0.5 flex-shrink-0">
                                   {sgDone}/{sg.imagePrompts.length}

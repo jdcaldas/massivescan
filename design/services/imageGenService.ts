@@ -110,6 +110,12 @@ export async function generateImage(
   aspectRatio: ArtFormatId = '3:4',
   signal?: AbortSignal,
   customSuffix?: string,
+  /** Optional reference image (base64, no MIME prefix). Passed as a second
+   *  `inlineData` part to Gemini multimodal models so the model can mimic
+   *  the visual identity of the reference (lighting, palette, character).
+   *  Ignored on the Imagen path (Imagen's `generateImages` API does not
+   *  accept image inputs — text-only character description still applies). */
+  visionReferenceBase64?: string,
 ): Promise<string> {
   // For the 'custom' style, the suffix is the user-pasted text; otherwise
   // use the predefined style suffix.
@@ -148,9 +154,25 @@ export async function generateImage(
         // constraint — since `aspectRatio` config isn't reliably honored by
         // the multimodal Gemini image path.
         const full = `${ASPECT_RATIO_PREFIX[aspectRatio]}${base} ${ASPECT_RATIO_HINT[aspectRatio]} ${noText}`;
+
+        // Build multimodal parts. When a vision reference is provided, the
+        // image goes BEFORE the text — Gemini conditions more reliably on
+        // image inputs when they appear first.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const parts: any[] = [];
+        if (visionReferenceBase64?.trim()) {
+          parts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: visionReferenceBase64,
+            },
+          });
+        }
+        parts.push({ text: full });
+
         const res = await ai.models.generateContent({
           model: modelId,
-          contents: [{ role: 'user', parts: [{ text: full }] }],
+          contents: [{ role: 'user', parts }],
           // Newer Gemini image-gen models accept imageConfig.aspectRatio;
           // older ones ignore it. Pass it anyway — harmless when unsupported,
           // helpful when supported.
