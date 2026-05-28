@@ -12,6 +12,7 @@ import {
   loadBin, addToBin, removeFromBin, emptyBin, urgencyFor,
   BIN_CAP, BIN_WARN_AT, BIN_URGENT_AT,
 } from '../services/recycleBinService';
+import { polishText, type PolishKind, type PolishMode, type PolishResult } from '../services/promptPolishService';
 
 // Fixed deck tier sequence — must match GroupCard.tsx and deckTypeMeta.ts
 const CARD_COLORS = [
@@ -562,6 +563,50 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     setStructure(s);
     onSave(s);
   }, [onSave]);
+
+  // ── Style Polish (Phase 1.5 #7) ─────────────────────────────────────────
+  // AI validator that refines free-form text fields to remove subject-matter
+  // contamination. Result is shown inline below the field with 3 actions:
+  // Keep refined / Keep original / Edit.
+  type PolishField = 'custom-style' | 'negative-prompt';
+  // Loading state is keyed by `${field}:${mode}` so the Polish spinner and
+  // Augment spinner can light up independently on the same field.
+  const [polishLoading, setPolishLoading] = useState<string | null>(null);
+  const [polishResult, setPolishResult] = useState<
+    | { field: PolishField; mode: PolishMode; original: string; result: PolishResult }
+    | null
+  >(null);
+
+  const runPolish = useCallback(async (
+    field: PolishField, rawText: string, kind: PolishKind, mode: PolishMode = 'polish',
+  ) => {
+    if (!rawText.trim()) return;
+    setPolishLoading(`${field}:${mode}`);
+    setPolishResult(null);
+    try {
+      const result = await polishText(rawText, kind, mode);
+      setPolishResult({ field, mode, original: rawText, result });
+    } finally {
+      setPolishLoading(null);
+    }
+  }, []);
+
+  /** User accepted the refined version — apply it and persist. */
+  const acceptPolished = useCallback(() => {
+    if (!polishResult) return;
+    const { field, result } = polishResult;
+    if (field === 'custom-style') {
+      setCustomStyleText(result.refined);
+      commitCustomStyle(result.refined);
+    } else if (field === 'negative-prompt') {
+      setNegativePromptText(result.refined);
+      commitNegativePrompt(result.refined);
+    }
+    setPolishResult(null);
+  }, [polishResult, commitCustomStyle, commitNegativePrompt]);
+
+  /** Dismiss — keep the original raw text untouched. */
+  const dismissPolish = useCallback(() => setPolishResult(null), []);
 
   // ── Persist Image Studio preferences per world ──────────────────────────
   // Style, format and model choices live on DesignStructure so reopening the
@@ -1217,6 +1262,36 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                 placeholder="e.g. Voxel Art, in the style of Refik Anadol · Dark Fantasy, mysterious atmosphere · Tech Noir, in the style of James Gurney…"
                 className="neo-input flex-1 bg-brand-bg text-xs text-brand-text px-3 py-2 placeholder:text-brand-subtle/40"
               />
+              {/* Polish button (#7) — AI validator removes subject-matter contamination */}
+              <button
+                onClick={() => runPolish('custom-style', customStyleText, 'style', 'polish')}
+                disabled={!customStyleText.trim() || polishLoading !== null}
+                className="flex items-center gap-1 px-2.5 py-2 text-[9px] font-black uppercase tracking-widest border-2 border-black bg-brand-bg text-brand-text hover:bg-emerald-300 hover:text-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                style={{ borderRadius: 1, boxShadow: '2px 2px 0 #000' }}
+                title="AI polish — clean up the text, remove subject-matter contamination"
+              >
+                {polishLoading === 'custom-style:polish' ? (
+                  <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                ) : (
+                  <span>✨</span>
+                )}
+                Polish
+              </button>
+              {/* Augment button — AI enriches the text with complementary style descriptors */}
+              <button
+                onClick={() => runPolish('custom-style', customStyleText, 'style', 'augment')}
+                disabled={!customStyleText.trim() || polishLoading !== null}
+                className="flex items-center gap-1 px-2.5 py-2 text-[9px] font-black uppercase tracking-widest border-2 border-black bg-brand-bg text-brand-text hover:bg-violet-300 hover:text-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                style={{ borderRadius: 1, boxShadow: '2px 2px 0 #000' }}
+                title="AI augment — add 3-7 complementary style descriptors that reinforce the same direction"
+              >
+                {polishLoading === 'custom-style:augment' ? (
+                  <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                ) : (
+                  <span>🪄</span>
+                )}
+                Augment
+              </button>
               {customStyleText && (
                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 flex-shrink-0">✓ saved</span>
               )}
@@ -1224,6 +1299,64 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
             <p className="text-[9px] text-brand-subtle/50 mt-1 ml-[88px]">
               Pasted text is appended to every prompt as the art direction, and is saved with this world.
             </p>
+
+            {/* Polish / Augment result panel for Custom style */}
+            {polishResult?.field === 'custom-style' && (() => {
+              const isAugment = polishResult.mode === 'augment';
+              const accentBg = isAugment ? 'bg-violet-100 dark:bg-violet-900/20' : 'bg-emerald-100 dark:bg-emerald-900/20';
+              const accentBorder = isAugment ? 'border-violet-500/30' : 'border-emerald-500/30';
+              const acceptBg = isAugment ? 'bg-violet-400' : 'bg-emerald-400';
+              const headerLabel = isAugment ? '🪄 Augmented version' : '✨ Refined version';
+              const listLabel = isAugment ? '➕ Added' : '⚠ Changes';
+              const listColor = isAugment ? 'text-violet-600' : 'text-amber-600';
+              const acceptLabel = isAugment ? 'Keep augmented' : 'Keep refined';
+              return (
+                <div
+                  className="mt-3 border-2 border-black bg-brand-surface p-3"
+                  style={{ borderRadius: 1, boxShadow: '3px 3px 0 #000' }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">{headerLabel}</span>
+                    <button
+                      onClick={dismissPolish}
+                      className="text-[10px] font-black text-brand-subtle hover:text-brand-text"
+                      title="Close"
+                    >✕</button>
+                  </div>
+                  <div className={`text-xs text-brand-text ${accentBg} border-2 ${accentBorder} px-3 py-2 mb-2`} style={{ borderRadius: 1 }}>
+                    {polishResult.result.refined}
+                  </div>
+                  {polishResult.result.warnings.length > 0 && (
+                    <div className="mb-3">
+                      <div className={`text-[9px] font-black uppercase tracking-widest ${listColor} mb-1`}>{listLabel}</div>
+                      <ul className="text-[10px] text-brand-subtle space-y-0.5 ml-3 list-disc">
+                        {polishResult.result.warnings.map((w, i) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={acceptPolished}
+                      className={`neo-btn px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${acceptBg} text-black`}
+                    >
+                      {acceptLabel}
+                    </button>
+                    <button
+                      onClick={dismissPolish}
+                      className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border-2 border-black bg-brand-bg text-brand-text"
+                      style={{ borderRadius: 1 }}
+                    >
+                      Keep original
+                    </button>
+                    <span className="text-[9px] text-brand-subtle/60 ml-2">
+                      or edit the field directly above
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1328,8 +1461,70 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
                       className="neo-input w-full bg-brand-surface text-xs text-brand-text px-3 py-2 placeholder:text-brand-subtle/40 resize-none"
                       rows={2}
                     />
-                    {negativePromptText.trim() && (
-                      <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mt-1 inline-block">✓ saved</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      {negativePromptText.trim() && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">✓ saved</span>
+                      )}
+                      {/* Polish button (#7) — AI validator for the Negative prompt */}
+                      <button
+                        onClick={() => runPolish('negative-prompt', negativePromptText, 'negative', 'polish')}
+                        disabled={!negativePromptText.trim() || polishLoading !== null}
+                        className="ml-auto flex items-center gap-1 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-black bg-brand-surface text-brand-text hover:bg-emerald-300 hover:text-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{ borderRadius: 1, boxShadow: '2px 2px 0 #000' }}
+                        title="AI polish — refine the negative prompt clauses"
+                      >
+                        {polishLoading === 'negative-prompt:polish' ? (
+                          <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                        ) : (
+                          <span>✨</span>
+                        )}
+                        Polish
+                      </button>
+                    </div>
+
+                    {/* Polish result for negative prompt */}
+                    {polishResult?.field === 'negative-prompt' && (
+                      <div
+                        className="mt-3 border-2 border-black bg-brand-surface p-3"
+                        style={{ borderRadius: 1, boxShadow: '3px 3px 0 #000' }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">✨ Refined negative prompt</span>
+                          <button
+                            onClick={dismissPolish}
+                            className="text-[10px] font-black text-brand-subtle hover:text-brand-text"
+                            title="Close"
+                          >✕</button>
+                        </div>
+                        <div className="text-xs text-brand-text bg-emerald-100 dark:bg-emerald-900/20 border-2 border-emerald-500/30 px-3 py-2 mb-2" style={{ borderRadius: 1 }}>
+                          {polishResult.result.refined}
+                        </div>
+                        {polishResult.result.warnings.length > 0 && (
+                          <div className="mb-3">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-1">⚠ Changes</div>
+                            <ul className="text-[10px] text-brand-subtle space-y-0.5 ml-3 list-disc">
+                              {polishResult.result.warnings.map((w, i) => (
+                                <li key={i}>{w}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={acceptPolished}
+                            className="neo-btn px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-emerald-400 text-black"
+                          >
+                            Keep refined
+                          </button>
+                          <button
+                            onClick={dismissPolish}
+                            className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border-2 border-black bg-brand-bg text-brand-text"
+                            style={{ borderRadius: 1 }}
+                          >
+                            Keep original
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
