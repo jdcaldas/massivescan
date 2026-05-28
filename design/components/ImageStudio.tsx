@@ -417,6 +417,17 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   const [negativePromptText, setNegativePromptText] = useState<string>(
     designStructure.negativePrompt ?? ''
   );
+  // Per-tier style overrides (Phase 2 #5) — opt-in, 4 editable text fields
+  const [perTierStyleOverridesEnabled, setPerTierStyleOverridesEnabled] = useState<boolean>(
+    designStructure.perTierStyleOverrides?.enabled ?? false
+  );
+  const [perTierStyleOverrideText, setPerTierStyleOverrideText] = useState<Record<'yellow'|'green'|'blue'|'magenta', string>>({
+    yellow:  designStructure.perTierStyleOverrides?.yellow  ?? '',
+    green:   designStructure.perTierStyleOverrides?.green   ?? '',
+    blue:    designStructure.perTierStyleOverrides?.blue    ?? '',
+    magenta: designStructure.perTierStyleOverrides?.magenta ?? '',
+  });
+
   // Consistency panel collapsed by default — discoverable but unobtrusive
   const [consistencyOpen, setConsistencyOpen] = useState<boolean>(false);
 
@@ -526,13 +537,19 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     /** Optional vision reference (base64) — included only when the recurring
      *  character is enabled AND the current card isn't excluded. */
     visionReference?: string,
+    /** Optional per-tier style override (Phase 2 #5). When provided, replaces
+     *  the globally-selected style + customStyleText for this single call. */
+    styleOverride?: { styleId: string; customSuffix: string },
   ) => {
     setGenStates(prev => ({ ...prev, [key]: 'generating' }));
     setGenErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
 
+    const effectiveStyleId = styleOverride?.styleId ?? selectedStyle;
+    const effectiveCustomSuffix = styleOverride?.customSuffix ?? customStyleText;
+
     try {
       const base64 = await generateImage(
-        prompt, selectedStyle, selectedModel, selectedFormat, abortRef.current?.signal, customStyleText, visionReference,
+        prompt, effectiveStyleId, selectedModel, selectedFormat, abortRef.current?.signal, effectiveCustomSuffix, visionReference,
       );
       // Apply to latest structure (via ref to avoid stale closure)
       const updated = applyResult(base64, structureRef.current);
@@ -629,6 +646,24 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     structureRef.current = s;
     setStructure(s);
     setCharacterPreviewSrc('');
+    onSave(s);
+  }, [onSave]);
+
+  // Persist per-tier style overrides (Phase 2 #5)
+  const commitPerTierStyleOverrides = useCallback((next: {
+    enabled: boolean;
+    yellow: string; green: string; blue: string; magenta: string;
+  }) => {
+    const s: DesignStructure = JSON.parse(JSON.stringify(structureRef.current));
+    s.perTierStyleOverrides = {
+      enabled: next.enabled,
+      yellow:  next.yellow,
+      green:   next.green,
+      blue:    next.blue,
+      magenta: next.magenta,
+    };
+    structureRef.current = s;
+    setStructure(s);
     onSave(s);
   }, [onSave]);
 
@@ -731,6 +766,23 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
   type TierKey = typeof TIER_KEYS[number];
 
   /**
+   * Per-tier style override (Phase 2 #5) — when enabled and the current
+   * group is a color tier (gi 0..3) with non-empty override text, returns
+   * a styleId+customSuffix combo that REPLACES the global style for this
+   * tier. Power-ups / utility / activators (gi >= 4) always use the global
+   * Custom style.
+   */
+  const resolveStyleForGroup = useCallback((gi: number): { styleId: string; customSuffix: string } | undefined => {
+    if (gi < 0 || gi > 3) return undefined;
+    const pt = structureRef.current.perTierStyleOverrides;
+    if (!pt?.enabled) return undefined;
+    const tierName = (['yellow', 'green', 'blue', 'magenta'] as const)[gi];
+    const overrideText = pt[tierName]?.trim();
+    if (!overrideText) return undefined;
+    return { styleId: CUSTOM_STYLE_ID, customSuffix: overrideText };
+  }, []);
+
+  /**
    * Resolve the recurring-character reference image base64 from the
    * structure, preferring an uploaded image over a structure pointer.
    * Returns undefined when no reference is set or pointer is stale.
@@ -804,6 +856,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     const prompt = extraPrompt ? `${base} Additional directions: ${extraPrompt}` : base;
     // Vision reference for character anchoring — only when feature is on
     const visionRef = characterEnabledForThisCard ? resolveCharacterReference() : undefined;
+    // Per-tier style override (#5)
+    const styleOverride = resolveStyleForGroup(gi);
     // Capture previous image so we can send it to the bin once generation succeeds
     const prevBase64 = scenario.base64Image;
     return doGenerate(key, prompt, (base64, prev) => {
@@ -812,8 +866,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
       // Send the previous image (if any) to the bin — fire and forget
       void sendToBin(prevBase64, scenario.prompt, group.title, undefined, 'regenerate');
       return s;
-    }, visionRef);
-  }, [doGenerate, sendToBin, assembleConsistencyBlocks, resolveCharacterReference]);
+    }, visionRef, styleOverride);
+  }, [doGenerate, sendToBin, assembleConsistencyBlocks, resolveCharacterReference, resolveStyleForGroup]);
 
   // ── Subgroup image generation ────────────────────────────────────────────
 
@@ -830,14 +884,15 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
     const base = `${contextBlock}${characterBlock}Setting: ${group.title} universe (reference: ${favPrompt}). Subgroup: ${sg.title}. ${sg.description}. Art direction: ${sg.mood}. Scene: ${scenario.prompt}.${paletteBlock}${avoidBlock}`;
     const prompt = extraPrompt ? `${base} Additional directions: ${extraPrompt}` : base;
     const visionRef = characterEnabledForThisCard ? resolveCharacterReference() : undefined;
+    const styleOverride = resolveStyleForGroup(gi);
     const prevBase64 = scenario.base64Image;
     return doGenerate(key, prompt, (base64, prev) => {
       const s: DesignStructure = JSON.parse(JSON.stringify(prev));
       s.groups[gi].subgroups[si].imagePrompts[pi].base64Image = base64;
       void sendToBin(prevBase64, scenario.prompt, group.title, sg.title, 'regenerate');
       return s;
-    }, visionRef);
-  }, [doGenerate, sendToBin, assembleConsistencyBlocks, resolveCharacterReference]);
+    }, visionRef, styleOverride);
+  }, [doGenerate, sendToBin, assembleConsistencyBlocks, resolveCharacterReference, resolveStyleForGroup]);
 
   // ── Batch helpers ────────────────────────────────────────────────────────
 
@@ -1493,9 +1548,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
           >
             <span>✨ Consistency</span>
             <span className="text-brand-subtle/60">{consistencyOpen ? '▾' : '▸'}</span>
-            {(tierPalettesEnabled || negativePromptEnabled || recurringCharacterEnabled) && (
+            {(tierPalettesEnabled || negativePromptEnabled || recurringCharacterEnabled || perTierStyleOverridesEnabled) && (
               <span className="px-1.5 py-px text-[8px] font-black uppercase tracking-widest border-2 border-black bg-emerald-300 text-black" style={{ borderRadius: 1 }}>
-                {(tierPalettesEnabled ? 1 : 0) + (negativePromptEnabled ? 1 : 0) + (recurringCharacterEnabled ? 1 : 0)} active
+                {(tierPalettesEnabled ? 1 : 0) + (negativePromptEnabled ? 1 : 0) + (recurringCharacterEnabled ? 1 : 0) + (perTierStyleOverridesEnabled ? 1 : 0)} active
               </span>
             )}
           </button>
@@ -1652,6 +1707,63 @@ const ImageStudio: React.FC<ImageStudioProps> = ({
 
                     <p className="text-[9px] text-brand-subtle/50">
                       Per-card opt-out: in the Subgroups list below, toggle <span className="font-mono">🧍 include character</span> off for cards where the protagonist shouldn't appear (e.g. battle scenes without them).
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Per-tier style overrides (Phase 2 #5) ─────────────── */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={perTierStyleOverridesEnabled}
+                    onChange={e => {
+                      const enabled = e.target.checked;
+                      setPerTierStyleOverridesEnabled(enabled);
+                      commitPerTierStyleOverrides({ enabled, ...perTierStyleOverrideText });
+                    }}
+                    className="w-3.5 h-3.5 cursor-pointer accent-emerald-500"
+                  />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">Per-tier style overrides</span>
+                  <span className="text-[9px] text-brand-subtle/60">
+                    Replace global Art Style per color tier (e.g. each tier = a different era)
+                  </span>
+                </label>
+
+                {perTierStyleOverridesEnabled && (
+                  <div className="mt-2 ml-6 space-y-2">
+                    {(['yellow', 'green', 'blue', 'magenta'] as const).map(tier => {
+                      const tierColors: Record<typeof tier, string> = {
+                        yellow: '#FDE68A', green: '#86EFAC', blue: '#7DD3FC', magenta: '#F0ABFC',
+                      };
+                      const placeholders: Record<typeof tier, string> = {
+                        yellow:  'e.g. 70s UK punk aesthetic, ripped polaroid, safety pins, photocopy texture',
+                        green:   'e.g. 80s hardcore stark photocopy zine, B&W, sharpie scrawl',
+                        blue:    'e.g. 90s pop-punk skate park photography, vibrant primary colors',
+                        magenta: 'e.g. 00s emo MySpace aesthetic, deep purple, eyeliner black',
+                      };
+                      return (
+                        <div key={tier} className="flex items-start gap-2">
+                          <span
+                            className="flex-shrink-0 px-2 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-black text-black mt-px"
+                            style={{ backgroundColor: tierColors[tier], borderRadius: 1, minWidth: 64, textAlign: 'center' }}
+                          >{tier}</span>
+                          <textarea
+                            value={perTierStyleOverrideText[tier]}
+                            onChange={e => setPerTierStyleOverrideText(prev => ({ ...prev, [tier]: e.target.value }))}
+                            onBlur={() => commitPerTierStyleOverrides({ enabled: perTierStyleOverridesEnabled, ...perTierStyleOverrideText })}
+                            placeholder={placeholders[tier]}
+                            className="neo-input flex-1 bg-brand-surface text-xs text-brand-text px-2 py-1.5 placeholder:text-brand-subtle/40 resize-none"
+                            rows={2}
+                          />
+                        </div>
+                      );
+                    })}
+                    <p className="text-[9px] text-brand-subtle/60 mt-2">
+                      When set, this text replaces the Custom global style <strong>just for that color tier</strong>.
+                      Power-Ups / Utility / Activators continue to use the global Custom style.
+                      Leave a tier empty to use the global style for it.
                     </p>
                   </div>
                 )}

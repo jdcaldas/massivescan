@@ -100,6 +100,18 @@ export interface DesignStructure {
      *  Takes precedence over referenceSlot when both are set. */
     referenceImageBase64?: string;
   };
+  /** Opt-in: replace the global Art Style suffix on a per-tier basis. Use
+   *  for collections where each tier represents a distinct era/movement
+   *  (e.g. History of Punk: Yellow=70s UK, Green=80s hardcore…). Only
+   *  applied to the 4 color tiers (gi 0..3) — Power-Ups / Utility / Activator
+   *  always use the global Custom style. */
+  perTierStyleOverrides?: {
+    enabled: boolean;
+    yellow?: string;
+    green?: string;
+    blue?: string;
+    magenta?: string;
+  };
 }
 
 export interface TokenUsage {
